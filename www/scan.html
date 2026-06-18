@@ -3,118 +3,76 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self' data: blob: 'unsafe-inline' 'unsafe-eval'
-             https://cdn.jsdelivr.net https://unpkg.com;
-             media-src * blob: data: mediastream:;
-             img-src 'self' data: blob:;
-             connect-src 'self' data: blob: https://cdn.jsdelivr.net https://unpkg.com;
-             script-src 'self' 'unsafe-inline' 'unsafe-eval'
-             https://cdn.jsdelivr.net https://unpkg.com;">
   <title>Pindai AR - UNEJ Heritage</title>
   <style>
-    /* ---- Reset & Base ---- */
-    * { margin:0; padding:0; box-sizing:border-box;
-        font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; }
-    body { background:#000; color:#333; display:flex; justify-content:center; overflow:hidden; }
-
+    /* Reset & Base */
+    * { margin:0; padding:0; box-sizing:border-box; font-family: sans-serif; }
+    body { background:#000; display:flex; justify-content:center; overflow:hidden; }
     .app-container {
       width:100%; max-width:480px; height:100vh; background:#000;
       position:relative; overflow:hidden;
-      box-shadow:0 0 15px rgba(0,0,0,.5);
     }
 
-    /* ---- Wrapper kamera ---- */
+    /* Kamera wrapper */
     #camera-wrapper {
       position:absolute; top:0; left:0; width:100%; height:100%;
       overflow:hidden; z-index:1; background:#000;
     }
-
     #qr-reader {
-      position:absolute !important;
-      top:0 !important; left:0 !important;
+      position:absolute !important; inset:0 !important;
       width:100% !important; height:100% !important;
-      overflow:hidden !important;
-      background:#000;
+      overflow:hidden !important; background:#000;
     }
-
-    /* Reset total untuk video */
-    #qr-reader video,
-    #qr-reader .qr-reader__video video {
-      position: absolute !important;
-      top: 50% !important;
-      left: 50% !important;
-      transform: translate(-50%, -50%) !important;
-      min-width: 100% !important;
-      min-height: 100% !important;
-      width: auto !important;
-      height: auto !important;
-      object-fit: cover !important;
-      display: block !important;
-      background: #000 !important;
+    #qr-reader video {
+      position:absolute !important;
+      top:50% !important; left:50% !important;
+      transform:translate(-50%,-50%) !important;
+      min-width:100% !important; min-height:100% !important;
+      width:auto !important; height:auto !important;
+      object-fit:cover !important;
+      display:block !important;
     }
-
-    #qr-reader > *:not(video):not(.qr-reader__video) {
-      display: none !important;
-    }
-    #qr-reader * {
-      display: block !important;
-      visibility: visible !important;
-      opacity: 1 !important;
-    }
+    /* Sembunyikan dashboard */
+    #qr-reader > *:not(video):not(.qr-reader__video) { display:none !important; }
     #qr-reader .qr-reader__dashboard,
-    #qr-reader .qr-reader__dashboard_section,
-    #qr-reader .qr-reader__dashboard_section_csr,
-    #qr-reader .qr-reader__dashboard_section_fsr,
-    #qr-reader .qr-reader__dashboard_section_swaplink,
-    #qr-reader .qr-reader__filescan_input,
-    #qr-reader .qr-reader__camera_permission_button,
     #qr-reader button,
-    #qr-reader select {
-      display: none !important;
-    }
+    #qr-reader select { display:none !important; }
 
-    /* ---- Overlay ---- */
+    /* Overlay */
     .camera-overlay {
-      position:absolute; top:0; left:0; width:100%; height:100%;
-      background:linear-gradient(to bottom,
-        rgba(0,0,0,.4) 0%, rgba(0,0,0,0) 22%,
-        rgba(0,0,0,0) 78%, rgba(0,0,0,.55) 100%);
+      position:absolute; inset:0;
+      background:linear-gradient(to bottom, rgba(0,0,0,.4) 0%, transparent 22%, transparent 78%, rgba(0,0,0,.55) 100%);
       z-index:2; pointer-events:none;
     }
 
-    /* ---- Header ---- */
+    /* Header */
     .top-header {
       position:absolute; top:0; left:0; width:100%;
       display:flex; justify-content:space-between; align-items:center;
-      padding:20px; z-index:10;
+      padding:16px 20px; z-index:10;
     }
     .header-left { display:flex; align-items:center; gap:10px; }
     .header-left h1 { font-size:18px; font-weight:700; color:#fff; text-shadow:0 1px 4px rgba(0,0,0,.6); }
-    .bell-icon { color:#fff; cursor:pointer; filter:drop-shadow(0 1px 3px rgba(0,0,0,.5)); }
+    .bell-icon { color:#fff; }
 
-    /* ---- Toast ---- */
+    /* Toast */
     .scan-toast {
-      position:absolute; top:76px; left:50%;
-      transform:translateX(-50%) translateY(-12px);
+      position:absolute; top:76px; left:50%; transform:translateX(-50%);
       background:rgba(20,20,20,.93); color:#fff;
-      padding:10px 22px; border-radius:24px;
-      font-size:14px; font-weight:600;
-      z-index:20; white-space:nowrap;
-      opacity:0; pointer-events:none;
-      transition:opacity .25s, transform .25s;
-      backdrop-filter:blur(8px);
-      border:1.5px solid rgba(255,255,255,.12);
+      padding:10px 22px; border-radius:24px; font-size:14px; font-weight:600;
+      z-index:20; white-space:nowrap; opacity:0; transition:opacity .25s;
+      backdrop-filter:blur(8px); border:1.5px solid rgba(255,255,255,.12);
       max-width:90vw; overflow:hidden; text-overflow:ellipsis;
+      pointer-events:none;
     }
-    .scan-toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
-    .scan-toast.ok      { border-color:#4ade80; }
+    .scan-toast.show { opacity:1; }
+    .scan-toast.ok { border-color:#4ade80; }
     .scan-toast.invalid { border-color:#f87171; }
 
-    /* ---- Viewfinder ---- */
+    /* Viewfinder */
     .scanner-ui {
-      position:absolute; top:0; left:0; width:100%; height:100%;
-      z-index:5; display:flex; flex-direction:column;
+      position:absolute; inset:0; z-index:5;
+      display:flex; flex-direction:column;
       justify-content:center; align-items:center; pointer-events:none;
     }
     .viewfinder {
@@ -175,11 +133,77 @@
       transition:background .3s, box-shadow .3s;
     }
 
-    /* ---- FAB samping kanan ---- */
+    /* ===== SLIDER ZOOM VERTIKAL DI KIRI ===== */
+    .zoom-controls {
+      position:absolute; left:12px; top:50%; transform:translateY(-50%);
+      z-index:8; display:flex; flex-direction:column;
+      align-items:center; gap:6px;
+      background:rgba(0,0,0,.5);
+      backdrop-filter:blur(4px);
+      border-radius:30px;
+      padding:14px 6px;
+      border:1px solid rgba(255,255,255,.15);
+      pointer-events:auto;
+    }
+    .zoom-controls label {
+      color:#fff; font-size:12px; font-weight:600;
+    }
+    .zoom-controls input[type="range"] {
+      -webkit-appearance: slider-vertical;
+      appearance: slider-vertical;
+      width:120px; height:4px;
+      writing-mode: bt-lr; /* untuk Firefox */
+      background:linear-gradient(to top, #facc15, #f59e0b);
+      outline:none;
+      cursor:pointer;
+    }
+    .zoom-controls input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width:16px; height:16px;
+      border-radius:50%;
+      background:#facc15;
+      cursor:pointer;
+      box-shadow:0 0 6px rgba(250,204,21,.6);
+    }
+    .zoom-controls input[type="range"]::-moz-range-thumb {
+      width:16px; height:16px;
+      border-radius:50%;
+      background:#facc15;
+      cursor:pointer;
+      border:none;
+    }
+    .zoom-controls .zoom-value {
+      color:#fff;
+      font-size:11px;
+      font-weight:700;
+      min-width:32px;
+      text-align:center;
+    }
+    .zoom-controls .zoom-icon {
+      color:#facc15;
+      font-size:14px;
+    }
+
+    /* Tombol ganti kamera */
+    .btn-switch-cam {
+      position:absolute; right:16px; top:50%; transform:translateY(-50%);
+      z-index:8;
+      background:rgba(0,0,0,.5);
+      backdrop-filter:blur(4px);
+      border:1px solid rgba(255,255,255,.2);
+      border-radius:50%;
+      width:44px; height:44px;
+      display:flex; align-items:center; justify-content:center;
+      color:#fff; font-size:20px;
+      cursor:pointer; pointer-events:auto;
+    }
+    .btn-switch-cam:active { background:rgba(255,255,255,.2); }
+
+    /* FAB kanan bawah (upload) */
     .side-fabs {
-      position:absolute; top:50%; right:18px; transform:translateY(-50%);
-      display:flex; flex-direction:column; gap:14px;
-      pointer-events:auto; z-index:7;
+      position:absolute; bottom:100px; right:16px;
+      display:flex; flex-direction:column; gap:12px; z-index:7;
     }
     .fab {
       width:46px; height:46px; background:#fff; border-radius:50%;
@@ -194,106 +218,11 @@
     #img-file-input { display:none; }
     .fab-hint {
       color:rgba(255,255,255,.7); font-size:9px; font-weight:600;
-      text-align:center; margin-top:-8px; pointer-events:none;
+      text-align:center; margin-top:-4px; pointer-events:none;
       text-shadow:0 1px 3px rgba(0,0,0,.8);
     }
 
-    /* ---- SWITCH CAMERA BUTTON (kiri) ---- */
-    #switch-camera-btn {
-      position:absolute;
-      left:18px;
-      top:50%;
-      transform:translateY(-50%);
-      z-index:7;
-      width:46px;
-      height:46px;
-      border-radius:50%;
-      background:rgba(255,255,255,.95);
-      border:none;
-      box-shadow:0 4px 12px rgba(0,0,0,.3);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      cursor:pointer;
-      pointer-events:auto;
-      font-size:20px;
-      color:#333;
-    }
-    #switch-camera-btn:active {
-      transform:translateY(-50%) scale(0.92);
-    }
-
-    /* ---- SLIDER ZOOM (kiri, vertikal) ---- */
-    .zoom-controls {
-      position:absolute;
-      left:12px;
-      top:50%;
-      transform:translateY(-50%) translateX(0);
-      z-index:8;
-      display:none; /* hidden by default, muncul jika zoom support */
-      flex-direction:column;
-      align-items:center;
-      gap:6px;
-      background:rgba(0,0,0,.6);
-      backdrop-filter:blur(8px);
-      padding:10px 6px;
-      border-radius:30px;
-      border:1px solid rgba(255,255,255,.15);
-      pointer-events:auto;
-      margin-top:60px; /* biar tidak ketimpa switch button */
-    }
-    .zoom-controls label {
-      color:#fff;
-      font-size:12px;
-      font-weight:600;
-      writing-mode:vertical-lr;
-      text-orientation:mixed;
-      letter-spacing:2px;
-    }
-    .zoom-controls input[type="range"] {
-      -webkit-appearance: none;
-      appearance: none;
-      width:120px;
-      height:4px;
-      border-radius:2px;
-      background:linear-gradient(to bottom, #facc15, #f59e0b);
-      outline:none;
-      transform:rotate(-90deg);
-      transform-origin:center;
-      margin:0;
-      padding:0;
-    }
-    .zoom-controls input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width:16px;
-      height:16px;
-      border-radius:50%;
-      background:#facc15;
-      cursor:pointer;
-      box-shadow:0 0 6px rgba(250,204,21,.6);
-    }
-    .zoom-controls input[type="range"]::-moz-range-thumb {
-      width:16px;
-      height:16px;
-      border-radius:50%;
-      background:#facc15;
-      cursor:pointer;
-      border:none;
-    }
-    .zoom-controls .zoom-value {
-      color:#fff;
-      font-size:11px;
-      font-weight:700;
-      text-align:center;
-      min-width:32px;
-    }
-    .zoom-controls .zoom-icon {
-      color:#facc15;
-      font-size:14px;
-    }
-
-    /* ---- Tombol Lihat Info ---- */
+    /* Tombol Lihat Info */
     .bottom-action-container {
       position:absolute; bottom:88px; width:100%;
       display:flex; justify-content:center; z-index:10; pointer-events:auto;
@@ -306,7 +235,7 @@
     }
     .btn-info:active { background:#011e46; }
 
-    /* ---- Hasil tes gambar ---- */
+    /* Hasil tes gambar */
     .img-result {
       position:absolute; bottom:200px; left:50%; transform:translateX(-50%);
       background:rgba(255,255,255,.97); border-radius:14px;
@@ -318,18 +247,16 @@
     .img-result.valid    { display:block; color:#166534; border:2px solid #4ade80; background:#f0fdf4; }
     .img-result.invalid  { display:block; color:#991b1b; border:2px solid #f87171; background:#fef2f2; }
 
-    /* ---- Bottom-sheet ---- */
+    /* Bottom sheet */
     .popup-backdrop {
-      position:absolute; top:0; left:0; width:100%; height:100%;
-      background:rgba(0,0,0,.45); z-index:150;
-      opacity:0; visibility:hidden; transition:opacity .3s,visibility .3s;
+      position:absolute; inset:0; background:rgba(0,0,0,.45); z-index:150;
+      opacity:0; visibility:hidden; transition:opacity .3s;
     }
     .popup-backdrop.show { opacity:1; visibility:visible; }
     .bottom-sheet {
       position:absolute; bottom:0; left:0; width:100%;
       background:#fff; border-top-left-radius:24px; border-top-right-radius:24px;
-      padding:20px; padding-bottom:calc(20px + env(safe-area-inset-bottom,10px));
-      z-index:160; box-shadow:0 -4px 20px rgba(0,0,0,.3);
+      padding:20px; z-index:160; box-shadow:0 -4px 20px rgba(0,0,0,.3);
       transform:translateY(100%); transition:transform .4s cubic-bezier(.25,1,.5,1);
     }
     .bottom-sheet.open { transform:translateY(0); }
@@ -361,11 +288,42 @@
     .btn-sheet-action {
       width:100%; background:#023474; color:#fff; border:none;
       padding:14px; border-radius:12px; font-size:15px; font-weight:700;
-      cursor:pointer; text-align:center; box-shadow:0 2px 6px rgba(2,52,116,.25);
+      cursor:pointer; text-align:center;
     }
-    .btn-sheet-action:active { background:#011e46; }
 
-    /* ---- Bottom nav ---- */
+    /* ===== DEBUG POPUP ===== */
+    .debug-modal {
+      position:absolute; inset:0; background:rgba(0,0,0,.7);
+      z-index:200; display:none;
+      justify-content:center; align-items:center;
+      padding:20px;
+    }
+    .debug-modal.show { display:flex; }
+    .debug-box {
+      background:#1e1e2e; color:#cdd6f4;
+      padding:24px; border-radius:16px;
+      max-width:400px; width:100%;
+      max-height:70vh; overflow:auto;
+      font-family:monospace; font-size:13px;
+      border:1px solid #f9e2af;
+      box-shadow:0 8px 30px rgba(0,0,0,.6);
+    }
+    .debug-box h3 {
+      color:#f9e2af; margin-bottom:12px;
+      display:flex; justify-content:space-between;
+    }
+    .debug-box pre {
+      white-space:pre-wrap; word-wrap:break-word;
+      background:#11111b; padding:12px; border-radius:8px;
+      margin:8px 0; max-height:300px; overflow-y:auto;
+    }
+    .debug-box .btn-close-debug {
+      background:#f9e2af; color:#1e1e2e;
+      border:none; padding:8px 20px; border-radius:8px;
+      font-weight:700; cursor:pointer; margin-top:12px;
+    }
+
+    /* Bottom nav */
     .bottom-nav {
       position:absolute; bottom:0; width:100%;
       background:#fff; border-top:1px solid #eaeaea;
@@ -384,7 +342,6 @@
     }
     .nav-item.active { color:#023474; font-weight:600; }
     .nav-item.active .nav-icon-box { background:#e2eafc; }
-    .nav-item.active svg { stroke:#023474 !important; }
   </style>
 </head>
 <body>
@@ -430,30 +387,26 @@
     </div>
   </div>
 
-  <!-- Switch Camera Button (kiri) -->
-  <button id="switch-camera-btn" title="Ganti Kamera">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9"/>
-    </svg>
-  </button>
-
-  <!-- Zoom Controls (kiri, vertikal) -->
-  <div class="zoom-controls" id="zoom-controls">
+  <!-- Zoom Slider Vertikal di KIRI -->
+  <div class="zoom-controls" id="zoom-controls" style="display:none;">
     <span class="zoom-icon">🔍</span>
-    <input type="range" id="zoom-slider" min="1" max="4" step="0.1" value="1">
+    <input type="range" id="zoom-slider" min="1" max="4" step="0.1" value="1" orient="vertical">
     <span class="zoom-value" id="zoom-value">1.0x</span>
   </div>
+
+  <!-- Tombol Ganti Kamera di KANAN -->
+  <button class="btn-switch-cam" id="btn-switch-cam" title="Ganti kamera">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M23 4v6h-6M1 20v-6h6"/>
+      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+    </svg>
+  </button>
 
   <!-- Hasil tes gambar -->
   <div class="img-result" id="img-test-result"></div>
 
-  <!-- FAB kanan -->
+  <!-- FAB upload -->
   <div class="side-fabs">
-    <button class="fab" onclick="App.go('daftar.html')" title="Daftar gedung">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round">
-        <line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/>
-      </svg>
-    </button>
     <div class="fab fab-upload" title="Tes gambar QR">
       <label for="img-file-input">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -480,7 +433,7 @@
     </button>
   </div>
 
-  <!-- Bottom-sheet -->
+  <!-- Bottom sheet -->
   <div class="popup-backdrop" id="popup-backdrop"></div>
   <div class="bottom-sheet" id="bottom-sheet">
     <div class="sheet-handle" id="sheet-handle"></div>
@@ -498,40 +451,38 @@
     <button class="btn-sheet-action" id="sheet-action">Buka Detail Sejarah</button>
   </div>
 
+  <!-- DEBUG MODAL -->
+  <div class="debug-modal" id="debug-modal">
+    <div class="debug-box">
+      <h3>🔍 Debug Log <span style="font-size:12px;color:#a6adc8;">(gagal start video)</span></h3>
+      <pre id="debug-content">Tidak ada error</pre>
+      <button class="btn-close-debug" id="btn-close-debug">Tutup</button>
+    </div>
+  </div>
+
   <!-- Bottom nav -->
   <nav class="bottom-nav">
     <a class="nav-item" onclick="App.go('beranda.html')">
       <div class="nav-icon-box">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4a5568" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-          <polyline points="9 22 9 12 15 12 15 22"/>
-        </svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4a5568" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       </div>
       <span>Beranda</span>
     </a>
     <a class="nav-item active" onclick="App.go('scan.html')">
       <div class="nav-icon-box">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 4h4v4H4zM16 4h4v4h-4zM4 16h4v4H4zM12 12h.01M16 16h.01M16 20h.01M20 16h.01M20 20h.01M12 16h.01M12 20h.01"/>
-        </svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h4v4H4zM16 4h4v4h-4zM4 16h4v4H4zM12 12h.01M16 16h.01M16 20h.01M20 16h.01M20 20h.01M12 16h.01M12 20h.01"/></svg>
       </div>
       <span>Pindai</span>
     </a>
     <a class="nav-item" onclick="App.go('daftar.html')">
       <div class="nav-icon-box">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4a5568" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 6h16M4 12h16M4 18h16M4 6v.01M4 12v.01M4 18v.01"/>
-        </svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4a5568" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16M4 6v.01M4 12v.01M4 18v.01"/></svg>
       </div>
       <span>Daftar</span>
     </a>
     <a class="nav-item" onclick="App.go('tentang.html')">
       <div class="nav-icon-box">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4a5568" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="16" x2="12" y2="12"/>
-          <line x1="12" y1="8" x2="12.01" y2="8"/>
-        </svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4a5568" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
       </div>
       <span>Tentang</span>
     </a>
@@ -547,22 +498,35 @@
   document.addEventListener("DOMContentLoaded", function () {
     Scanner.start();
 
+    // Event tombol
     document.getElementById("btn-close-sheet").addEventListener("click", Scanner.closeSheet);
     document.getElementById("popup-backdrop").addEventListener("click", Scanner.closeSheet);
     document.getElementById("sheet-handle").addEventListener("click", Scanner.closeSheet);
 
-    function showCurrent() {
+    document.getElementById("btn-trigger").addEventListener("click", function() {
       var b = Scanner.getCurrent();
       if (b) Scanner.openSheet();
       else alert("Arahkan kamera ke QR code gedung terlebih dahulu.");
-    }
-    document.getElementById("btn-trigger").addEventListener("click", showCurrent);
-    document.getElementById("label-trigger").addEventListener("click", showCurrent);
+    });
+    document.getElementById("label-trigger").addEventListener("click", function() {
+      var b = Scanner.getCurrent();
+      if (b) Scanner.openSheet();
+      else alert("Arahkan kamera ke QR code gedung terlebih dahulu.");
+    });
 
-    // Tutup hasil tes gambar
+    // Ganti kamera
+    document.getElementById("btn-switch-cam").addEventListener("click", function() {
+      Scanner.switchCamera();
+    });
+
+    // Tutup debug
+    document.getElementById("btn-close-debug").addEventListener("click", function() {
+      document.getElementById("debug-modal").classList.remove("show");
+    });
+
+    // Upload
     document.querySelector(".app-container").addEventListener("click", function(e) {
       var res = document.getElementById("img-test-result");
-      var inp = document.getElementById("img-file-input");
       var fab = document.querySelector(".fab-upload");
       if (res && res.className !== "img-result"
           && !res.contains(e.target) && !fab.contains(e.target)) {
