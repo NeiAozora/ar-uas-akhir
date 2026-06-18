@@ -1,0 +1,16 @@
+{
+  "name": "ac.id.unej.heritagear",
+  "displayName": "UNEJ Heritage AR",
+  "version": "1.0.0",
+  "description": "AR marker-based (QR) sejarah bangunan UNEJ — data offline.",
+  "license": "MIT",
+  "cordova": {
+    "platforms": [
+      "android"
+    ],
+    "plugins": {
+      "cordova-plugin-statusbar": {},
+      "cordova-plugin-splashscreen": {}
+    }
+  }
+}

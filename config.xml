@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='utf-8'?>
+<widget id="ac.id.unej.heritagear" version="1.0.0"
+        xmlns="http://www.w3.org/ns/widgets"
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:cdv="http://cordova.apache.org/ns/1.0">
+
+    <name>UNEJ Heritage AR</name>
+    <description>AR marker-based (QR) untuk menjelajahi sejarah bangunan Universitas Jember. Data offline.</description>
+    <author email="dev@unej.ac.id" href="https://unej.ac.id">Tim UNEJ Heritage AR</author>
+
+    <content src="index.html" />
+
+    <!-- Network access -->
+    <access origin="*" />
+    <allow-intent href="http://*/*" />
+    <allow-intent href="https://*/*" />
+    <allow-navigation href="*" />
+
+    <!-- Global preferences -->
+    <preference name="DisallowOverscroll" value="true" />
+    <preference name="BackgroundColor" value="0xff083478" />
+    <preference name="Orientation" value="portrait" />
+    <preference name="SplashMaintainAspectRatio" value="true" />
+    <preference name="AndroidLaunchMode" value="singleTop" />
+
+    <!-- Free-plan-safe plugins only -->
+    <plugin name="cordova-plugin-statusbar" spec="^3.0.0" />
+    <plugin name="cordova-plugin-splashscreen" spec="^6.0.0" />
+
+    <platform name="android">
+        <!-- Android 10 = API 29 -->
+        <preference name="android-minSdkVersion" value="29" />
+        <preference name="android-targetSdkVersion" value="29" />
+        <preference name="android-compileSdkVersion" value="29" />
+        <preference name="AndroidXEnabled" value="true" />
+        <preference name="GradleVersion" value="6.5" />
+        <preference name="AndroidGradlePluginVersion" value="4.0.0" />
+
+        <!-- Camera permission declared statically — Android will prompt at runtime
+             when getUserMedia() is called, no plugin needed for this -->
+        <config-file target="AndroidManifest.xml" parent="/manifest">
+            <uses-permission android:name="android.permission.CAMERA" />
+            <uses-feature android:name="android.hardware.camera"
+                android:required="false" />
+            <uses-feature android:name="android.hardware.camera.autofocus"
+                android:required="false" />
+            <uses-feature android:name="android.hardware.camera.front"
+                android:required="false" />
+        </config-file>
+
+        <!-- App icons (all densities) -->
+        <icon density="ldpi"    src="www/img/logo-unej.png" />
+        <icon density="mdpi"    src="www/img/logo-unej.png" />
+        <icon density="hdpi"    src="www/img/logo-unej.png" />
+        <icon density="xhdpi"   src="www/img/logo-unej.png" />
+        <icon density="xxhdpi"  src="www/img/logo-unej.png" />
+        <icon density="xxxhdpi" src="www/img/logo-unej.png" />
+    </platform>
+</widget>

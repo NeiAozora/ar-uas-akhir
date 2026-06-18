@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob: 'unsafe-inline' 'unsafe-eval'; media-src * blob: data: mediastream:; img-src 'self' data: blob: content:; connect-src 'self' data: blob:;">
+    <title>Daftar Gedung - UNEJ Heritage AR</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; }
+        body { background:#f8f9fa; color:#333; display:flex; justify-content:center; }
+        .app-container { width:100%; max-width:480px; background:#fff; min-height:100vh; position:relative; box-shadow:0 0 15px rgba(0,0,0,.1); overflow-x:hidden; padding-bottom:90px; }
+        .top-header { display:flex; justify-content:space-between; align-items:center; padding:16px 20px; background:#fff; position:sticky; top:0; z-index:10; }
+        .header-left { display:flex; align-items:center;10px; }
+        .header-left h1 { font-size:18px; font-weight:700; color:#023474; }
+        .bell-icon { color:#4a5568; cursor:pointer; }
+        .search-container { padding:0 20px; margin-top:10px; margin-bottom:16px; }
+        .search-input { width:100%; background:#f4f6f8; border:none; padding:14px 16px; border-radius:12px; font-size:14px; color:#333; outline:none; }
+        .search-input::placeholder { color:#a0aec0; }
+        .filter-container { display:flex;10px; padding:0 20px; margin-bottom:24px; overflow-x:auto; -ms-overflow-style:none; scrollbar-width:none; }
+        .filter-container::-webkit-scrollbar { display:none; }
+        .chip { padding:8px 16px; border-radius:20px; font-size:13px; font-weight:500; white-space:nowrap; cursor:pointer; border:none; background:#e6eef5; color:#4a5568; }
+        .chip.active { background:#023474; color:#fff; }
+        .list-section { margin-bottom:24px; }
+        .section-header { display:flex; justify-content:space-between; align-items:center; padding:0 20px; margin-bottom:12px; }
+        .section-header h3 { font-size:17px; font-weight:700; color:#1a202c; }
+        .list-container { padding:0 20px; display:flex; flex-direction:column;12px; }
+        .list-card { display:flex; align-items:center; background:#fff; border-radius:12px; padding:12px; box-shadow:0 2px 8px rgba(0,0,0,.04); border:1px solid #f0f0f0; cursor:pointer;14px; }
+        .list-card img { width:76px; height:76px; border-radius:8px; object-fit:cover; background:#eaeaea; }
+        .card-info { flex:1; min-width:0; }
+        .card-info h4 { font-size:15px; font-weight:600; color:#1a202c; margin-bottom:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .card-info p { font-size:12px; color:#718096; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+        .arrow-icon { color:#cbd5e1; flex-shrink:0; }
+        .empty { padding:40px 20px; text-align:center; color:#a0aec0; font-size:14px; }
+        .bottom-nav { position:fixed; bottom:0; width:100%; max-width:480px; background:#fff; border-top:1px solid #eaeaea; display:flex; justify-content:space-between; padding:10px 20px; padding-bottom:env(safe-area-inset-bottom,10px); z-index:100; }
+        .nav-item { display:flex; flex-direction:column; align-items:center;4px; text-decoration:none; color:#718096; font-size:11px; font-weight:500; width:60px; cursor:pointer; }
+        .nav-icon-box { width:48px; height:32px; display:flex; justify-content:center; align-items:center; border-radius:16px; }
+        .nav-item.active { color:#023474; font-weight:600; }
+        .nav-item.active .nav-icon-box { background:#e2eafc; }
+        .nav-item.active svg { stroke:#023474; fill:transparent; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="top-header">
+            <div class="header-left">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="#023474"><path d="M12 2L2 9H22L12 2ZM3 11V20H5V11H3ZM7 11V20H9V11H7ZM11 11V20H13V11H11ZM15 11V20H17V11H15ZM19 11V20H21V11H19ZM2 21V23H22V21H2Z"/></svg>
+                <h1>UNEJ Heritage AR</h1>
+            </div>
+            <div class="bell-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="#4a5568"><path d="M12 22C13.1 22 14 21.1 14 20H10C10 21.1 10.9 22 12 22ZM18 16V11C18 7.93 16.36 5.36 13.5 4.68V4C13.5 3.17 12.83 2.5 12 2.5C11.17 2.5 10.5 3.17 10.5 4V4.68C7.63 5.36 6 7.92 6 11V16L4 18V19H20V18L18 16Z"/></svg>
+            </div>
+        </header>
+
+        <div class="search-container">
+            <input type="text" class="search-input" id="search" placeholder="Cari gedung atau fakultas...">
+        </div>
+
+        <div class="filter-container" id="chips">
+            <button class="chip active" data-cat="semua">Semua</button>
+            <button class="chip" data-cat="bersejarah">Bersejarah</button>
+            <button class="chip" data-cat="fakultas">Fakultas</button>
+        </div>
+
+        <section class="list-section">
+            <div class="section-header"><h3 id="list-heading">Semua Gedung</h3></div>
+            <div class="list-container" id="list"></div>
+        </section>
+
+        <nav class="bottom-nav">
+            <a class="nav-item" onclick="App.go('beranda.html')"><div class="nav-icon-box"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4a5568" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></div><span>Beranda</span></a>
+            <a class="nav-item" onclick="App.go('scan.html')"><div class="nav-icon-box"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4a5568" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h4v4H4zM16 4h4v4h-4zM4 16h4v4H4zM12 12h.01M16 16h.01M16 20h.01M20 16h.01M20 20h.01M12 16h.01M12 20h.01"/></svg></div><span>Pindai</span></a>
+            <a class="nav-item active" onclick="App.go('daftar.html')"><div class="nav-icon-box"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h16M4 6v.01M4 12v.01M4 18v.01"/></svg></div><span>Daftar</span></a>
+            <a class="nav-item" onclick="App.go('tentang.html')"><div class="nav-icon-box"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4a5568" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></div><span>Tentang</span></a>
+        </nav>
+    </div>
+
+    <script src="js/data.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        App.onReady(function () {
+            var current = "semua";
+            var listEl = document.getElementById("list");
+            var searchEl = document.getElementById("search");
+
+            function render() {
+                var items = DB.byCategory(current);
+                var q = searchEl.value.toLowerCase().trim();
+                if (q) items = items.filter(function (b) {
+                    return b.name.toLowerCase().includes(q) || b.short.toLowerCase().includes(q);
+                });
+                listEl.innerHTML = items.length
+                    ? items.map(App.listCardHTML).join("")
+                    : '<div class="empty">Tidak ada gedung yang cocok.</div>';
+            }
+
+            document.getElementById("chips").addEventListener("click", function (e) {
+                var chip = e.target.closest(".chip");
+                if (!chip) return;
+                document.querySelectorAll(".chip").forEach(function (c) { c.classList.remove("active"); });
+                chip.classList.add("active");
+                current = chip.dataset.cat;
+                document.getElementById("list-heading").textContent = chip.textContent + " Gedung";
+                render();
+            });
+            searchEl.addEventListener("input", render);
+            render();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob: 'unsafe-inline' 'unsafe-eval'; media-src * blob: data: mediastream:; img-src 'self' data: blob: content:; connect-src 'self' data: blob:;">
+    <title>Pindai AR - UNEJ Heritage</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; }
+        body { background:#000; color:#333; display:flex; justify-content:center; }
+        .app-container { width:100%; max-width:480px; height:100vh; background:#000; position:relative; box-shadow:0 0 15px rgba(0,0,0,.5); overflow:hidden; }
+        #camera-stream { position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:1; }
+        #scan-canvas { display:none; }
+        .camera-overlay { position:absolute; top:0; left:0; width:100%; height:100%; background:linear-gradient(to bottom,rgba(0,0,0,.3) 0%,rgba(0,0,0,0) 20%,rgba(0,0,0,0) 80%,rgba(0,0,0,.4) 100%); z-index:2; }
+        .top-header { position:absolute; top:0; left:0; width:100%; display:flex; justify-content:space-between; align-items:center; padding:20px; z-index:10; }
+        .header-left { display:flex; align-items:center;10px; }
+        .header-left h1 { font-size:18px; font-weight:700; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.5); }
+        .bell-icon { color:#fff; cursor:pointer; filter:drop-shadow(0 1px 3px rgba(0,0,0,.5)); }
+        .scanner-ui { position:absolute; top:0; left:0; width:100%; height:100%; z-index:5; display:flex; flex-direction:column; justify-content:center; align-items:center; pointer-events:none; }
+        .viewfinder { width:260px; height:260px; border:2px solid rgba(255,255,255,.8); border-radius:20px; position:relative; box-shadow:0 0 0 9999px rgba(0,0,0,.2); }
+        .detected-label { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:#023474; color:#fff; padding:10px 16px; border-radius:20px; font-size:14px; font-weight:600; display:flex; align-items:center;8px; pointer-events:auto; border:2px solid rgba(255,255,255,.2); z-index:6; white-space:nowrap; cursor:pointer; }
+        .dot-indicator { width:8px; height:8px; background:#facc15; border-radius:50%; box-shadow:0 0 8px currentColor; }
+        .side-fabs { position:absolute; top:50%; right:20px; transform:translateY(-50%); display:flex; flex-direction:column;16px; pointer-events:auto; z-index:7; }
+        .fab { width:44px; height:44px; background:#fff; border-radius:50%; display:flex; justify-content:center; align-items:center; box-shadow:0 4px 10px rgba(0,0,0,.2); cursor:pointer; border:none; }
+        .fab svg { fill:#333; width:20px; height:20px; }
+        .bottom-action-container { position:absolute; bottom:100px; width:100%; display:flex; justify-content:center; z-index:10; pointer-events:auto; }
+        .btn-info { background:#023474; color:#fff; border:none; padding:14px 30px; border-radius:30px; font-size:16px; font-weight:700; display:flex; align-items:center;10px; box-shadow:0 4px 12px rgba(0,0,0,.3); cursor:pointer; }
+        .popup-backdrop { position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.4); z-index:150; opacity:0; visibility:hidden; transition:opacity .3s,visibility .3s; }
+        .popup-backdrop.show { opacity:1; visibility:visible; }
+        .bottom-sheet { position:absolute; bottom:0; left:0; width:100%; background:#fff; border-top-left-radius:24px; border-top-right-radius:24px; padding:20px; padding-bottom:calc(20px + env(safe-area-inset-bottom,10px)); z-index:160; box-shadow:0 -4px 20px rgba(0,0,0,.3); transform:translateY(100%); transition:transform .4s cubic-bezier(.25,1,.5,1); }
+        .bottom-sheet.open { transform:translateY(0); }
+        .sheet-handle { width:40px; height:4px; background:#cbd5e1; border-radius:2px; margin:0 auto 16px; cursor:pointer; }
+        .sheet-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; }
+        .sheet-title-area .sheet-tag { display:inline-block; background:#e2eafc; color:#023474; font-size:11px; font-weight:700; padding:4px 10px; border-radius:6px; margin-bottom:6px; }
+        .sheet-title-area h2 { font-size:20px; font-weight:700; color:#1a202c; }
+        .btn-close-sheet { background:#f1f5f9; border:none; width:32px; height:32px; border-radius:50%; display:flex; justify-content:center; align-items:center; cursor:pointer; color:#64748b; font-size:18px; }
+        .sheet-body { display:flex;16px; align-items:center; margin-bottom:20px; }
+        .sheet-thumbnail { width:90px; height:90px; border-radius:12px; object-fit:cover; background:#eaeaea; }
+        .sheet-description { flex:1; font-size:13px; line-height:1.5; color:#4a5568; }
+        .btn-sheet-action { width:100%; background:#023474; color:#fff; border:none; padding:14px; border-radius:12px; font-size:15px; font-weight:700; cursor:pointer; text-align:center; box-shadow:0 2px 5px rgba(2,52,116,.2); }
+        .btn-sheet-action:active { background:#011e46; }
+        .bottom-nav { position:absolute; bottom:0; width:100%; background:#fff; border-top:1px solid #eaeaea; display:flex; justify-content:space-between; padding:10px 20px; padding-bottom:env(safe-area-inset-bottom,10px); z-index:100; }
+        .nav-item { display:flex; flex-direction:column; align-items:center;4px; text-decoration:none; color:#718096; font-size:11px; font-weight:500; width:60px; cursor:pointer; }
+        .nav-icon-box { width:48px; height:32px; display:flex; justify-content:center; align-items:center; border-radius:16px; }
+        .nav-item.active { color:#023474; font-weight:600; }
+        .nav-item.active .nav-icon-box { background:#e2eafc; }
+        .nav-item.active svg { stroke:#023474; fill:transparent; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <video id="camera-stream" autoplay playsinline muted></video>
+        <canvas id="scan-canvas"></canvas>
+        <div class="camera-overlay"></div>
+
+        <header class="top-header">
+            <div class="header-left">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><path d="M12 2L2 9H22L12 2ZM3 11V20H5V11H3ZM7 11V20H9V11H7ZM11 11V20H13V11H11ZM15 11V20H17V11H15ZM19 11V20H21V11H19ZM2 21V23H22V21H2Z"/></svg>
+                <h1>UNEJ Heritage AR</h1>
+            </div>
+            <div class="bell-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M12 22C13.1 22 14 21.1 14 20H10C10 21.1 10.9 22 12 22ZM18 16V11C18 7.93 16.36 5.36 13.5 4.68V4C13.5 3.17 12.83 2.5 12 2.5C11.17 2.5 10.5 3.17 10.5 4V4.68C7.63 5.36 6 7.92 6 11V16L4 18V19H20V18L18 16Z"/></svg>
+            </div>
+        </header>
+
+        <div class="scanner-ui">
+            <div class="viewfinder">
+                <div class="detected-label" id="label-trigger">
+                    <div class="dot-indicator" id="dot-indicator"></div>
+                    <span id="detected-text">Mengaktifkan kamera…</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="side-fabs">
+            <button class="fab" onclick="App.go('daftar.html')" title="Daftar gedung">
+                <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" stroke="#333" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+            </button>
+            <button class="fab" title="Pengaturan">
+                <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.73 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .43-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.49-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+            </button>
+        </div>
+
+        <div class="bottom-action-container">
+            <button class="btn-info" id="btn-trigger">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                Lihat Info
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
+        </div>
+
+        <div class="popup-backdrop" id="popup-backdrop"></div>
+        <div class="bottom-sheet" id="bottom-sheet">
+            <div class="sheet-handle" id="sheet-handle"></div>
+            <div class="sheet-header">
+                <div class="sheet-title-area">
+                    <span class="sheet-tag" id="sheet-tag">Bersejarah</span>
+                    <h2 id="sheet-title">Gedung</h2>
+                </div>
+                <button class="btn-close-sheet" id="btn-close-sheet">&times;</button>
+            </div>
+            <div class="sheet-body">
+                <img src="img/rektorat.jpg" alt="" class="sheet-thumbnail" id="sheet-thumb">
+                <div class="sheet-description" id="sheet-desc"></div>
+            </div>
+            <button class="btn-sheet-action" id="sheet-action">Buka Detail Sejarah</button>
+        </div>
+
+        <nav class="bottom-nav">
+            <a class="nav-item" onclick="App.go('beranda.html')"><div class="nav-icon-box"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4a5568" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></div><span>Beranda</span></a>
+            <a class="nav-item active" onclick="App.go('scan.html')"><div class="nav-icon-box"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h4v4H4zM16 4h4v4h-4zM4 16h4v4H4zM12 12h.01M16 16h.01M16 20h.01M20 16h.01M20 20h.01M12 16h.01M12 20h.01"/></svg></div><span>Pindai</span></a>
+            <a class="nav-item" onclick="App.go('daftar.html')"><div class="nav-icon-box"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4a5568" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h16M4 6v.01M4 12v.01M4 18v.01"/></svg></div><span>Daftar</span></a>
+            <a class="nav-item" onclick="App.go('tentang.html')"><div class="nav-icon-box"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4a5568" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></div><span>Tentang</span></a>
+        </nav>
+    </div>
+
+    <script src="js/jsQR.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/scan.js"></script>
+    <script>
+        App.onReady(function () {
+            Scanner.start();
+            document.getElementById("btn-close-sheet").addEventListener("click", Scanner.closeSheet);
+            document.getElementById("popup-backdrop").addEventListener("click", Scanner.closeSheet);
+            document.getElementById("sheet-handle").addEventListener("click", Scanner.closeSheet);
+            // "Lihat Info" / label: buka detail gedung terakhir terdeteksi, atau buka sheet
+            function showCurrent() {
+                var b = Scanner.getCurrent();
+                if (b) Scanner.openSheet(); else alert("Arahkan kamera ke QR code gedung terlebih dahulu.");
+            }
+            document.getElementById("btn-trigger").addEventListener("click", showCurrent);
+            document.getElementById("label-trigger").addEventListener("click", showCurrent);
+            window.addEventListener("pagehide", Scanner.stop);
+        });
+    </script>
+</body>
+</html>

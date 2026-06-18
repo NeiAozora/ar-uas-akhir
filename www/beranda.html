@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob: 'unsafe-inline' 'unsafe-eval'; media-src * blob: data: mediastream:; img-src 'self' data: blob: content:; connect-src 'self' data: blob:;">
+    <title>Beranda - UNEJ Heritage AR</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; }
+        body { background:#f8f9fa; color:#333; display:flex; justify-content:center; }
+        .app-container { width:100%; max-width:480px; background:#fff; min-height:100vh; position:relative; box-shadow:0 0 15px rgba(0,0,0,.1); overflow-x:hidden; padding-bottom:80px; }
+        .top-header { display:flex; justify-content:space-between; align-items:center; padding:16px 20px; background:#fff; border-bottom:1px solid #eaeaea; position:sticky; top:0; z-index:10; }
+        .header-left { display:flex; align-items:center;10px; }
+        .header-left h1 { font-size:18px; font-weight:700; color:#023474; }
+        .bell-icon { color:#4a5568; cursor:pointer; }
+        .hero-section { padding:20px; }
+        .hero-card { background:#023474; border-radius:12px; padding:24px 20px; text-align:center; color:#fff; box-shadow:0 4px 6px rgba(0,0,0,.1); }
+        .hero-card h2 { font-size:24px; font-weight:700; margin-bottom:10px; line-height:1.3; }
+        .hero-card p { font-size:13px; line-height:1.5; color:#d1d9e6; margin-bottom:20px; }
+        .btn-scan { background:#fff; color:#023474; border:none; padding:12px 20px; border-radius:8px; font-size:15px; font-weight:700; display:inline-flex; align-items:center; justify-content:center;8px; width:100%; cursor:pointer; }
+        .section-header { display:flex; justify-content:space-between; align-items:flex-end; padding:0 20px; margin-top:10px; margin-bottom:16px; }
+        .section-header h3 { font-size:18px; font-weight:700; color:#1a202c; }
+        .section-header a { font-size:14px; color:#3182ce; text-decoration:none; font-weight:500; cursor:pointer; }
+        .horizontal-scroll { display:flex;16px; overflow-x:auto; padding:0 20px 20px; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; -ms-overflow-style:none; scrollbar-width:none; }
+        .horizontal-scroll::-webkit-scrollbar { display:none; }
+        .building-card { min-width:220px; background:#fff; border-radius:12px; border:1px solid #eaeaea; overflow:hidden; scroll-snap-align:start; box-shadow:0 2px 4px rgba(0,0,0,.02); cursor:pointer; }
+        .building-card img { width:100%; height:130px; object-fit:cover; }
+        .card-content { padding:12px; }
+        .tag { display:inline-block; background:#f1f3f5; color:#495057; font-size:11px; font-weight:600; padding:4px 8px; border-radius:4px; margin-bottom:8px; }
+        .card-title { font-size:15px; font-weight:700; color:#1a202c; margin-bottom:8px; }
+        .card-location { display:flex; align-items:center;4px; font-size:12px; color:#718096; }
+        .bottom-nav { position:fixed; bottom:0; width:100%; max-width:480px; background:#fff; border-top:1px solid #eaeaea; display:flex; justify-content:space-between; padding:10px 20px; padding-bottom:env(safe-area-inset-bottom,10px); z-index:100; }
+        .nav-item { display:flex; flex-direction:column; align-items:center;4px; text-decoration:none; color:#718096; font-size:11px; font-weight:500; width:60px; cursor:pointer; }
+        .nav-icon-box { width:48px; height:32px; display:flex; justify-content:center; align-items:center; border-radius:16px; }
+        .nav-item.active { color:#023474; font-weight:600; }
+        .nav-item.active .nav-icon-box { background:#e2eafc; }
+        .nav-item.active svg { stroke:#023474; fill:#023474; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="top-header">
+            <div class="header-left">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="#023474"><path d="M12 2L2 9H22L12 2ZM3 11V20H5V11H3ZM7 11V20H9V11H7ZM11 11V20H13V11H11ZM15 11V20H17V11H15ZM19 11V20H21V11H19ZM2 21V23H22V21H2Z"/></svg>
+                <h1>UNEJ Heritage AR</h1>
+            </div>
+            <div class="bell-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="#4a5568"><path d="M12 22C13.1 22 14 21.1 14 20H10C10 21.1 10.9 22 12 22ZM18 16V11C18 7.93 16.36 5.36 13.5 4.68V4C13.5 3.17 12.83 2.5 12 2.5C11.17 2.5 10.5 3.17 10.5 4V4.68C7.63 5.36 6 7.92 6 11V16L4 18V19H20V18L18 16Z"/></svg>
+            </div>
+        </header>
+
+        <main>
+            <section class="hero-section">
+                <div class="hero-card">
+                    <h2>Jelajahi Sejarah<br>Kampus</h2>
+                    <p>Saksikan warisan arsitektur UNEJ melalui teknologi AR.</p>
+                    <button class="btn-scan" onclick="App.go('scan.html')">
+                        Mulai Scan AR
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#023474" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3H3v2M21 3h-2v2M5 21H3v-2M21 21h-2v-2M9 9h6v6H9z"/></svg>
+                    </button>
+                </div>
+            </section>
+
+            <section class="featured-section">
+                <div class="section-header">
+                    <h3>Bangunan Unggulan</h3>
+                    <a onclick="App.go('daftar.html')">Lihat Semua</a>
+                </div>
+                <div class="horizontal-scroll" id="featured-list"></div>
+            </section>
+        </main>
+
+        <nav class="bottom-nav">
+            <a class="nav-item active" onclick="App.go('beranda.html')"><div class="nav-icon-box"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></div><span>Beranda</span></a>
+            <a class="nav-item" onclick="App.go('scan.html')"><div class="nav-icon-box"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4a5568" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h4v4H4zM16 4h4v4h-4zM4 16h4v4H4zM12 12h.01M16 16h.01M16 20h.01M20 16h.01M20 20h.01M12 16h.01M12 20h.01"/></svg></div><span>Pindai</span></a>
+            <a class="nav-item" onclick="App.go('daftar.html')"><div class="nav-icon-box"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4a5568" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h16M4 6v.01M4 12v.01M4 18v.01"/></svg></div><span>Daftar</span></a>
+            <a class="nav-item" onclick="App.go('tentang.html')"><div class="nav-icon-box"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4a5568" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></div><span>Tentang</span></a>
+        </nav>
+    </div>
+
+    <script src="js/data.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        App.onReady(function () {
+            document.getElementById("featured-list").innerHTML =
+                DB.featured().map(App.buildingCardHTML).join("");
+        });
+    </script>
+</body>
+</html>
