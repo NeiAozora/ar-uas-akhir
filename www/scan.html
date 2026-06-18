@@ -299,6 +299,67 @@
     .nav-item.active { color:#023474; font-weight:600; }
     .nav-item.active .nav-icon-box { background:#e2eafc; }
     .nav-item.active svg { stroke:#023474 !important; }
+
+
+
+
+
+
+
+    /* ========== PATCH KAMERA ========== */
+    /* Reset total untuk #qr-reader */
+    #qr-reader {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
+    background: #000 !important;
+    z-index: 1 !important;
+    }
+
+    /* Pastikan video tampil penuh */
+    #qr-reader video,
+    #qr-reader .qr-reader__video video {
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    min-width: 100% !important;
+    min-height: 100% !important;
+    width: auto !important;
+    height: auto !important;
+    object-fit: cover !important;
+    display: block !important;
+    background: #000 !important;
+    }
+
+    /* Sembunyikan semua elemen lain di dalam #qr-reader, kecuali video */
+    #qr-reader > *:not(video):not(.qr-reader__video) {
+    display: none !important;
+    }
+
+    /* Paksa semua child tetap terlihat (kecuali yang sudah disembunyikan) */
+    #qr-reader * {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    }
+
+    /* Namun sembunyikan dashboard dan kontrol */
+    #qr-reader .qr-reader__dashboard,
+    #qr-reader .qr-reader__dashboard_section,
+    #qr-reader .qr-reader__dashboard_section_csr,
+    #qr-reader .qr-reader__dashboard_section_fsr,
+    #qr-reader .qr-reader__dashboard_section_swaplink,
+    #qr-reader .qr-reader__filescan_input,
+    #qr-reader .qr-reader__camera_permission_button,
+    #qr-reader button,
+    #qr-reader select {
+    display: none !important;
+    }
+
+
   </style>
 </head>
 <body>

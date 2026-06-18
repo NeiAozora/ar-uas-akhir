@@ -1,10 +1,9 @@
-/* =====================================================================
- * UNEJ Heritage AR — SCANNER
- * Menggunakan html5-qrcode (scanapp-org/html5-qrcode)
- * - Kamera live + scan otomatis
- * - Notifikasi valid/invalid + animasi
- * - Upload gambar untuk tes QR
- * ===================================================================== */
+// =====================================================================
+// UNEJ Heritage AR — SCANNER (PATCHED)
+// - Pengecekan izin kamera eksplisit
+// - qrbox dinamis menyesuaikan viewport
+// - CSS dipastikan tidak menimpa video
+// =====================================================================
 
 let Scanner = (function () {
   let html5QrCode   = null;
@@ -15,7 +14,6 @@ let Scanner = (function () {
 
   const ui = {};
 
-  /* ---- Cache semua elemen DOM ---- */
   function cacheUI() {
     ui.label       = document.getElementById("detected-text");
     ui.dot         = document.getElementById("dot-indicator");
@@ -34,7 +32,6 @@ let Scanner = (function () {
     ui.viewfinder  = document.getElementById("viewfinder");
   }
 
-  /* ---- Callback QR berhasil terbaca ---- */
   function onScanSuccess(decodedText) {
     if (decodedText === lastQR) return;
     lastQR = decodedText;
@@ -61,53 +58,95 @@ let Scanner = (function () {
     }
   }
 
-  /* ---- Mulai scanner kamera ---- */
+  // ========== FUNGSI START YANG DIPERBAIKI ==========
   function start() {
     cacheUI();
     setLabel("Mengaktifkan kamera…", "idle");
+
+    // 1️⃣ Cek dukungan getUserMedia
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setLabel("❌ Browser tidak support kamera", "invalid");
+      console.error("getUserMedia tidak tersedia");
+      return;
+    }
+
+    // 2️⃣ Minta izin secara eksplisit (agar pengguna tidak bingung)
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+      .then(stream => {
+        // Izin diberikan, stop stream sementara
+        stream.getTracks().forEach(t => t.stop());
+        // Lanjut inisialisasi scanner
+        initScanner();
+      })
+      .catch(err => {
+        console.error("❌ Izin kamera ditolak:", err);
+        setLabel("❌ Izin kamera ditolak — klik ikon gembok di URL", "invalid");
+        // Tampilkan pesan di toast juga
+        showToast("⚠️ Izin kamera diperlukan — periksa pengaturan browser", "invalid");
+      });
+  }
+
+  // Fungsi inisialisasi scanner (dipanggil setelah izin OK)
+  function initScanner() {
+    // Hentikan scanner lama jika ada
+    if (html5QrCode) {
+      html5QrCode.stop().catch(() => {});
+      html5QrCode.clear().catch(() => {});
+      html5QrCode = null;
+    }
 
     html5QrCode = new Html5Qrcode("qr-reader");
 
     Html5Qrcode.getCameras()
       .then(cameras => {
         if (!cameras || cameras.length === 0) {
-          setLabel("Kamera tidak ditemukan", "idle");
+          setLabel("❌ Tidak ada kamera terdeteksi", "invalid");
           return;
         }
-        /* Prioritas: kamera belakang */
+
+        // Pilih kamera belakang jika ada
         const backCam = cameras.find(c =>
           /back|rear|environment/i.test(c.label)
         ) || cameras[cameras.length - 1];
+
+        // Dapatkan ukuran container untuk qrbox dinamis
+        const container = document.getElementById("qr-reader");
+        const rect = container.getBoundingClientRect();
+        const viewportSize = Math.min(rect.width, rect.height);
+        // qrbox antara 200px dan 70% dari ukuran terkecil
+        const qrSize = Math.min(Math.max(200, viewportSize * 0.7), 350);
+
+        console.log("📐 qrbox size:", qrSize);
 
         html5QrCode.start(
           backCam.id,
           {
             fps: 12,
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: window.innerWidth < 480 ? 1.0 : 1.333,
+            qrbox: { width: qrSize, height: qrSize },
+            aspectRatio: 1.333,
           },
           onScanSuccess,
-          () => {} // per-frame error diabaikan
-        ).then(() => {
+          (err) => {
+            // Abaikan error per-frame (biasanya noise)
+          }
+        )
+        .then(() => {
           scannerRunning = true;
           setLabel("Arahkan ke QR gedung…", "idle");
-        }).catch(err => {
-          console.error("Kamera gagal start:", err);
-          setLabel("Kamera tidak tersedia", "idle");
+          console.log("✅ Kamera berhasil menyala!");
+        })
+        .catch(err => {
+          console.error("❌ Gagal start kamera:", err);
+          setLabel("❌ " + err.message, "invalid");
         });
       })
       .catch(err => {
-        console.error("getCameras gagal:", err);
-        setLabel("Izin kamera ditolak", "idle");
+        console.error("❌ getCameras gagal:", err);
+        setLabel("❌ " + err.message, "invalid");
       });
-
-    /* --- Event upload gambar untuk tes QR --- */
-    if (ui.imgInput) {
-      ui.imgInput.addEventListener("change", onImageFileSelected);
-    }
   }
 
-  /* ---- Stop scanner ---- */
+  // ========== FUNGSI STOP ==========
   function stop() {
     if (html5QrCode && scannerRunning) {
       html5QrCode.stop().catch(() => {});
@@ -115,7 +154,7 @@ let Scanner = (function () {
     }
   }
 
-  /* ---- Tes QR dari gambar yang di-upload ---- */
+  // ========== TES GAMBAR ==========
   function onImageFileSelected(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -124,9 +163,6 @@ let Scanner = (function () {
     ui.imgResult.className = "img-result scanning";
     ui.imgResult.textContent = "🔍 Memproses gambar…";
 
-    // scanFile adalah instance method, bukan static — pakai instance html5QrCode
-    // Jika scanner sedang jalan, gunakan instance yang sudah ada.
-    // Jika belum (misal kamera belum ready), buat instance sementara.
     const scanner = html5QrCode || new Html5Qrcode("qr-reader-img-dummy");
 
     scanner.scanFile(file, /* showImage= */ false)
@@ -154,11 +190,10 @@ let Scanner = (function () {
         showToast("❌ QR tidak ditemukan di gambar", "invalid");
       });
 
-    // Reset input agar file yang sama bisa dipilih ulang
     e.target.value = "";
   }
 
-  /* ---- Toast notifikasi ---- */
+  // ========== UI HELPER ==========
   function showToast(msg, state) {
     if (!ui.toast) return;
     ui.toastMsg.textContent = msg;
@@ -169,16 +204,14 @@ let Scanner = (function () {
     }, 2800);
   }
 
-  /* ---- Animasi viewfinder saat scan ---- */
   function pulseViewfinder(state) {
     if (!ui.viewfinder) return;
     ui.viewfinder.classList.remove("pulse-ok", "pulse-invalid");
-    void ui.viewfinder.offsetWidth; // reflow
+    void ui.viewfinder.offsetWidth;
     ui.viewfinder.classList.add("pulse-" + state);
     setTimeout(() => ui.viewfinder.classList.remove("pulse-ok", "pulse-invalid"), 900);
   }
 
-  /* ---- Ubah label + warna dot status ---- */
   function setLabel(txt, state) {
     if (ui.label) ui.label.textContent = txt;
     if (ui.dot) {
@@ -188,7 +221,6 @@ let Scanner = (function () {
     }
   }
 
-  /* ---- Isi bottom-sheet dengan data gedung ---- */
   function fillSheet(b) {
     ui.sheetTag.textContent   = b.tag;
     ui.sheetTitle.textContent = b.name;
@@ -210,5 +242,12 @@ let Scanner = (function () {
     setLabel("Arahkan ke QR gedung…", "idle");
   }
 
-  return { start, stop, openSheet, closeSheet, getCurrent: () => currentBuilding };
+  // ========== PUBLIC API ==========
+  return {
+    start,
+    stop,
+    openSheet,
+    closeSheet,
+    getCurrent: () => currentBuilding
+  };
 })();
