@@ -1,12 +1,12 @@
 /* =====================================================================
  * UNEJ Heritage AR — SCANNER (html5-qrcode)
+ * Scanner SELALU jalan. Sheet bisa muncul di atas tanpa stop kamera.
  * ===================================================================== */
 
 let Scanner = (function () {
   let html5QrCode = null;
   let currentBuilding = null;
   let lastQR = null;
-  let isRunning = false;
   let invalidTimeout = null;
 
   const ui = {};
@@ -24,25 +24,24 @@ let Scanner = (function () {
   }
 
   function onScanSuccess(decodedText) {
-    // Abaikan kalau QR sama persis dengan yang terakhir diproses
     if (decodedText === lastQR) return;
     lastQR = decodedText;
 
+    clearTimeout(invalidTimeout);
+
     const b = DB.byQR(decodedText);
     if (b) {
-      // ✅ QR valid — stop scanner dulu, baru tampilkan info
-      stop();
+      // ✅ Valid — tampilkan sheet, kamera tetap jalan di belakang
       currentBuilding = b;
       setLabel(b.name, "ok");
       fillSheet(b);
       openSheet();
       if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
     } else {
-      // ❌ QR terbaca tapi bukan gedung UNEJ — kasih feedback, lanjut scan
+      // ❌ QR terbaca tapi bukan gedung UNEJ
       setLabel("❌ Bukan QR gedung UNEJ", "invalid");
-      clearTimeout(invalidTimeout);
       invalidTimeout = setTimeout(() => {
-        lastQR = null; // boleh scan lagi
+        lastQR = null;
         setLabel("Arahkan ke QR gedung…", "idle");
       }, 2000);
     }
@@ -68,9 +67,8 @@ let Scanner = (function () {
         backCam.id,
         { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
         onScanSuccess,
-        () => {} // abaikan error per-frame (bukan QR = normal)
+        () => {} // error per-frame diabaikan (normal kalau belum ada QR)
       ).then(() => {
-        isRunning = true;
         setLabel("Arahkan ke QR gedung…", "idle");
       }).catch(err => {
         console.error("Kamera gagal start:", err);
@@ -84,23 +82,9 @@ let Scanner = (function () {
   }
 
   function stop() {
-    if (html5QrCode && isRunning) {
+    if (html5QrCode) {
       html5QrCode.stop().catch(() => {});
-      isRunning = false;
     }
-  }
-
-  // Restart scanner (dipanggil saat sheet ditutup)
-  function resume() {
-    currentBuilding = null;
-    lastQR = null;
-    if (html5QrCode && !isRunning) {
-      html5QrCode.resume ? html5QrCode.resume() : start();
-    } else if (!html5QrCode) {
-      start();
-    }
-    // Kalau sudah running (sheet ditutup tapi kamera masih jalan), reset saja label
-    setLabel("Arahkan ke QR gedung…", "idle");
   }
 
   function setLabel(txt, state) {
@@ -127,8 +111,11 @@ let Scanner = (function () {
   function closeSheet() {
     ui.sheet.classList.remove("open");
     ui.backdrop.classList.remove("show");
-    resume(); // restart scan setelah sheet ditutup
+    // Reset biar bisa scan QR yang sama lagi
+    lastQR = null;
+    currentBuilding = null;
+    setLabel("Arahkan ke QR gedung…", "idle");
   }
 
-  return { start, stop, resume, openSheet, closeSheet, getCurrent: () => currentBuilding };
+  return { start, stop, openSheet, closeSheet, getCurrent: () => currentBuilding };
 })();
