@@ -14,7 +14,7 @@ let Scanner = (function () {
   let currentStream = null;
   let zoomCapabilities = null;
   let useSoftZoom = true;        // default pakai soft zoom
-  let currentZoom = 1.0;
+  let currentZoom = 0.1;
   let videoElement = null;
 
   const ui = {};
