@@ -1,5 +1,5 @@
 // =====================================================================
-// UNEJ Heritage AR — SCANNER FINAL
+// UNEJ Heritage AR — SCANNER FINAL (dengan deteksi mobile/desktop)
 // =====================================================================
 
 let Scanner = (function () {
@@ -13,6 +13,7 @@ let Scanner = (function () {
   let currentCameraIndex = 0;
   let currentStream = null;
   let zoomCapabilities = null;
+  let isMobile = false;
 
   const ui = {};
 
@@ -104,6 +105,10 @@ let Scanner = (function () {
   // ========== START ==========
   function start() {
     cacheUI();
+    // Deteksi mobile
+    isMobile = window.innerWidth < 768 || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    console.log("📱 isMobile:", isMobile);
+
     setLabel("Mengaktifkan kamera…", "idle");
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -123,24 +128,32 @@ let Scanner = (function () {
           showDebugLog(new Error("Tidak ada kamera terdeteksi"), "Pastikan perangkat memiliki kamera");
           return;
         }
-        const virtualKeywords = ["obs", "virtual", "manycam", "screen", "display", "capture"];
-        let filtered = cameras.filter(cam => {
-          const label = cam.label.toLowerCase();
-          const isVirtual = virtualKeywords.some(kw => label.includes(kw));
-          const isPhysical = label.includes("back") || label.includes("rear") || label.includes("environment");
-          return !isVirtual || isPhysical;
-        });
-        if (filtered.length === 0) {
+
+        let filtered;
+        if (isMobile) {
+          // Filter OBS / virtual untuk mobile
+          const virtualKeywords = ["obs", "virtual", "manycam", "screen", "display", "capture"];
           filtered = cameras.filter(cam => {
             const label = cam.label.toLowerCase();
-            return !label.includes("obs") && !label.includes("virtual");
+            const isVirtual = virtualKeywords.some(kw => label.includes(kw));
+            const isPhysical = label.includes("back") || label.includes("rear") || label.includes("environment");
+            return !isVirtual || isPhysical;
           });
+          if (filtered.length === 0) {
+            filtered = cameras.filter(cam => {
+              const label = cam.label.toLowerCase();
+              return !label.includes("obs") && !label.includes("virtual");
+            });
+          }
+          if (filtered.length === 0) filtered = cameras;
+        } else {
+          // Desktop: semua kamera
+          filtered = cameras;
         }
-        if (filtered.length === 0) filtered = cameras;
 
         cameraList = filtered;
         currentCameraIndex = 0;
-        console.log("📷 Kamera tersedia:", cameraList.map(c => c.label));
+        console.log("📷 Kamera tersedia (filtered):", cameraList.map(c => c.label));
         startCamera(cameraList[currentCameraIndex].id);
       })
       .catch(err => {
@@ -184,7 +197,7 @@ let Scanner = (function () {
         aspectRatio: 1.333,
       },
       onScanSuccess,
-      (err) => {}
+      (err) => {} // abaikan frame error
     )
     .then(() => {
       scannerRunning = true;
@@ -347,11 +360,11 @@ let Scanner = (function () {
     closeSheet,
     getCurrent: () => currentBuilding,
     switchCamera,
-    onImageFileSelected, // ekspos untuk event
+    onImageFileSelected,
   };
 })();
 
-// Event listener untuk upload (dipasang di sini agar Scanner sudah siap)
+// Event listener untuk upload
 document.addEventListener("DOMContentLoaded", function() {
   const input = document.getElementById("img-file-input");
   if (input) {
