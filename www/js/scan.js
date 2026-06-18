@@ -1,7 +1,7 @@
 // =====================================================================
 // UNEJ Heritage AR — SCANNER
-// - Zoom slider: 0.3x – 4.0x (soft zoom via CSS scale)
-// - Upload gambar: fix stuck, error handling
+// - Upload gambar: stop camera dulu, scan file, restart camera
+// - Zoom slider: 0.3x – 4.0x (soft zoom via CSS)
 // - Filter OBS, deteksi mobile (kamera belakang)
 // =====================================================================
 
@@ -19,6 +19,7 @@ let Scanner = (function () {
   let useSoftZoom = true;
   let currentZoom = 1.0;
   let videoElement = null;
+  let currentCameraId = null; // simpan ID kamera terakhir
 
   const ui = {};
 
@@ -184,7 +185,8 @@ let Scanner = (function () {
           return;
         }
 
-        startCamera(cameraList[currentCameraIndex].id);
+        currentCameraId = cameraList[currentCameraIndex].id;
+        startCamera(currentCameraId);
       })
       .catch(err => {
         console.error("❌ Error inisialisasi:", err);
@@ -209,6 +211,8 @@ let Scanner = (function () {
 
   // ---------- START KAMERA ----------
   function startCamera(cameraId) {
+    // Jangan stop dulu jika sedang berjalan (bisa digunakan untuk restart)
+    // Tapi untuk amannya, kita stop dulu
     stopCamera();
 
     if (!html5QrCode) {
@@ -236,6 +240,7 @@ let Scanner = (function () {
       scannerRunning = true;
       setLabel("Arahkan ke QR gedung…", "idle");
       console.log("✅ Kamera berhasil menyala, ID:", cameraId);
+      currentCameraId = cameraId;
 
       videoElement = document.querySelector("#qr-reader video");
       if (videoElement && videoElement.srcObject) {
@@ -266,6 +271,7 @@ let Scanner = (function () {
     currentCameraIndex = (currentCameraIndex + 1) % cameraList.length;
     const cam = cameraList[currentCameraIndex];
     showToast("🔄 Beralih ke: " + cam.label, "ok");
+    currentCameraId = cam.id;
     startCamera(cam.id);
   }
 
@@ -282,7 +288,7 @@ let Scanner = (function () {
     const capabilities = videoTrack.getCapabilities ? videoTrack.getCapabilities() : {};
     if (capabilities.zoom) {
       zoomCapabilities = capabilities.zoom;
-      useSoftZoom = false; // akan di-override jika hardware gagal
+      useSoftZoom = false;
       initZoomSlider(0.3, Math.max(4.0, zoomCapabilities.max || 4.0), 0.1);
       console.log("✅ Hardware zoom tersedia (min:", zoomCapabilities.min, "max:", zoomCapabilities.max, ")");
     } else {
@@ -299,7 +305,6 @@ let Scanner = (function () {
     ui.zoomSlider.min = min;
     ui.zoomSlider.max = max;
     ui.zoomSlider.step = step;
-    // Default ke 1.0 (atau min jika min > 1)
     let defaultValue = Math.min(Math.max(1.0, min), max);
     ui.zoomSlider.value = defaultValue;
     ui.zoomSlider.disabled = false;
@@ -312,7 +317,6 @@ let Scanner = (function () {
       applyZoom(val);
     };
 
-    // Terapkan nilai awal
     applyZoom(defaultValue);
   }
 
@@ -323,7 +327,6 @@ let Scanner = (function () {
     currentZoom = clamped;
     updateZoomDisplay(clamped);
 
-    // Coba hardware zoom jika memungkinkan dan nilai >= 1
     let useHardware = false;
     if (!useSoftZoom && zoomCapabilities && clamped >= 1.0) {
       useHardware = true;
@@ -349,7 +352,6 @@ let Scanner = (function () {
       }
     }
 
-    // Soft zoom (CSS scale)
     applySoftZoom(clamped);
   }
 
@@ -394,7 +396,7 @@ let Scanner = (function () {
     setLabel("Arahkan ke QR gedung…", "idle");
   }
 
-  // ========== UPLOAD GAMBAR — FIX STUCK ==========
+  // ========== UPLOAD GAMBAR — FIX "ongoing camera scan" ==========
   function onImageFileSelected(e) {
     const file = e.target.files[0];
     if (!file) {
@@ -406,11 +408,21 @@ let Scanner = (function () {
       return;
     }
 
-    // Tampilkan status scanning
     ui.imgResult.className = "img-result scanning";
     ui.imgResult.textContent = "🔍 Memproses gambar…";
 
-    // Pastikan instance scanner tersedia
+    // 1. Hentikan scanner kamera jika sedang berjalan
+    const wasRunning = scannerRunning;
+    if (wasRunning) {
+      console.log("Menghentikan kamera sementara untuk scan file...");
+      // Hentikan tanpa menghapus instance
+      if (html5QrCode) {
+        html5QrCode.stop().catch(() => {});
+        scannerRunning = false;
+      }
+    }
+
+    // 2. Siapkan scanner untuk file
     let scanner = html5QrCode;
     if (!scanner) {
       try {
@@ -420,11 +432,15 @@ let Scanner = (function () {
         ui.imgResult.innerHTML = "❌ Gagal inisialisasi scanner: " + err.message;
         showToast("❌ Error scanner", "invalid");
         e.target.value = "";
+        // Restart kamera jika perlu
+        if (wasRunning && currentCameraId) {
+          startCamera(currentCameraId);
+        }
         return;
       }
     }
 
-    // Jalankan scanFile
+    // 3. Scan file
     scanner.scanFile(file, false)
       .then(decodedText => {
         console.log("Decoded:", decodedText);
@@ -453,8 +469,17 @@ let Scanner = (function () {
         showToast("❌ QR tidak ditemukan", "invalid");
       })
       .finally(() => {
-        // Reset input agar file yang sama bisa dipilih ulang
+        // 4. Reset input
         e.target.value = "";
+
+        // 5. Restart kamera jika sebelumnya berjalan
+        if (wasRunning && currentCameraId) {
+          console.log("Restart kamera setelah scan file...");
+          // Tunggu sebentar agar resource bersih
+          setTimeout(() => {
+            startCamera(currentCameraId);
+          }, 300);
+        }
       });
   }
 
@@ -470,11 +495,10 @@ let Scanner = (function () {
   };
 })();
 
-// ---------- EVENT UPLOAD (dipasang ulang agar tidak double) ----------
+// ---------- EVENT UPLOAD (dipasang ulang) ----------
 document.addEventListener("DOMContentLoaded", function() {
   const input = document.getElementById("img-file-input");
   if (input) {
-    // Clone untuk menghapus listener lama
     const newInput = input.cloneNode(true);
     input.parentNode.replaceChild(newInput, input);
     newInput.addEventListener("change", function(e) {
