@@ -1,5 +1,5 @@
 // =====================================================================
-// UNEJ Heritage AR — SCANNER (Dengan Slider Zoom & Filter OBS)
+// UNEJ Heritage AR — SCANNER (Dengan Slider Zoom Vertikal di Kiri)
 // =====================================================================
 
 let Scanner = (function () {
@@ -9,13 +9,12 @@ let Scanner = (function () {
   let invalidTimeout = null;
   let scannerRunning = false;
   let selectedCameraId = null;
-  let mediaStream = null;        // Untuk akses track
-  let zoomCapabilities = null;   // Simpan capabilities zoom
+  let mediaStream = null;
+  let zoomCapabilities = null;
   let currentZoom = 1.0;
 
   const ui = {};
 
-  // Cache DOM
   function cacheUI() {
     ui.label       = document.getElementById("detected-text");
     ui.dot         = document.getElementById("dot-indicator");
@@ -34,9 +33,9 @@ let Scanner = (function () {
     ui.viewfinder  = document.getElementById("viewfinder");
     ui.zoomSlider  = document.getElementById("zoom-slider");
     ui.zoomValue   = document.getElementById("zoom-value");
+    ui.zoomContainer = document.getElementById("zoom-container");
   }
 
-  // Callback QR
   function onScanSuccess(decodedText) {
     if (decodedText === lastQR) return;
     lastQR = decodedText;
@@ -63,7 +62,6 @@ let Scanner = (function () {
     }
   }
 
-  // ========== START ==========
   function start() {
     cacheUI();
     setLabel("Mengaktifkan kamera…", "idle");
@@ -85,7 +83,6 @@ let Scanner = (function () {
       });
   }
 
-  // ========== INIT SCANNER + SETUP ZOOM ==========
   function initScanner() {
     if (html5QrCode) {
       html5QrCode.stop().catch(() => {});
@@ -134,7 +131,6 @@ let Scanner = (function () {
         const viewportSize = Math.min(rect.width, rect.height);
         const qrSize = Math.min(Math.max(200, viewportSize * 0.7), 350);
 
-        // Mulai scanner
         html5QrCode.start(
           selectedCameraId,
           {
@@ -150,18 +146,13 @@ let Scanner = (function () {
           setLabel("Arahkan ke QR gedung…", "idle");
           console.log("✅ Kamera berhasil menyala");
 
-          // ---- Ambil stream untuk zoom ----
+          // Ambil video element dan stream untuk zoom
           const videoElement = document.querySelector("#qr-reader video");
           if (videoElement && videoElement.srcObject) {
             mediaStream = videoElement.srcObject;
             setupZoomControls(mediaStream);
           } else {
-            // Fallback: coba ambil dari html5QrCode
-            const stream = html5QrCode.getMediaStream();
-            if (stream) {
-              mediaStream = stream;
-              setupZoomControls(stream);
-            }
+            console.warn("Video element tidak ditemukan atau srcObject null");
           }
         })
         .catch(err => {
@@ -175,11 +166,11 @@ let Scanner = (function () {
       });
   }
 
-  // ========== SETUP ZOOM CONTROLS ==========
   function setupZoomControls(stream) {
     const videoTrack = stream.getVideoTracks()[0];
     if (!videoTrack) {
       console.warn("Tidak ada video track untuk zoom");
+      hideZoom();
       return;
     }
 
@@ -191,7 +182,10 @@ let Scanner = (function () {
       const step = zoomCapabilities.step || 0.1;
       currentZoom = Math.min(Math.max(1, min), max);
 
-      // Set slider
+      // Tampilkan slider
+      if (ui.zoomContainer) {
+        ui.zoomContainer.style.display = "flex";
+      }
       if (ui.zoomSlider) {
         ui.zoomSlider.min = min;
         ui.zoomSlider.max = max;
@@ -208,20 +202,21 @@ let Scanner = (function () {
       console.log("✅ Zoom capabilities:", zoomCapabilities);
     } else {
       console.warn("❌ Zoom tidak didukung oleh kamera ini");
-      if (ui.zoomSlider) {
-        ui.zoomSlider.disabled = true;
-        ui.zoomValue.textContent = "Tidak support";
-      }
+      hideZoom();
     }
   }
 
-  // ========== APPLY ZOOM ==========
+  function hideZoom() {
+    if (ui.zoomContainer) {
+      ui.zoomContainer.style.display = "none";
+    }
+  }
+
   function applyZoom(value) {
     if (!mediaStream) return;
     const videoTrack = mediaStream.getVideoTracks()[0];
     if (!videoTrack) return;
 
-    // Batasi nilai
     const clamped = Math.min(Math.max(value, zoomCapabilities?.min || 1), zoomCapabilities?.max || 4);
     currentZoom = clamped;
 
@@ -243,7 +238,6 @@ let Scanner = (function () {
     }
   }
 
-  // ========== STOP ==========
   function stop() {
     if (html5QrCode && scannerRunning) {
       html5QrCode.stop().catch(() => {});
@@ -343,7 +337,6 @@ let Scanner = (function () {
     setLabel("Arahkan ke QR gedung…", "idle");
   }
 
-  // ========== PUBLIC ==========
   return {
     start,
     stop,

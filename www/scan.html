@@ -38,7 +38,7 @@
       background:#000;
     }
 
-    /* Reset total untuk video */
+    /* Reset video */
     #qr-reader video,
     #qr-reader .qr-reader__video video {
       position: absolute !important;
@@ -175,7 +175,73 @@
       transition:background .3s, box-shadow .3s;
     }
 
-    /* ---- FAB samping ---- */
+    /* ---- ZOOM CONTAINER (kiri, vertikal) ---- */
+    #zoom-container {
+      position:absolute;
+      left:12px;
+      top:50%;
+      transform:translateY(-50%);
+      display:none; /* default hidden, tampil jika zoom support */
+      flex-direction:column;
+      align-items:center;
+      gap:8px;
+      z-index:8;
+      background:rgba(0,0,0,.55);
+      backdrop-filter:blur(8px);
+      padding:12px 6px;
+      border-radius:30px;
+      border:1px solid rgba(255,255,255,.15);
+      pointer-events:auto;
+    }
+    #zoom-container .zoom-label {
+      color:#fff;
+      font-size:11px;
+      font-weight:600;
+      writing-mode:vertical-lr;
+      letter-spacing:2px;
+      opacity:.7;
+      margin-bottom:4px;
+    }
+    #zoom-container input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width:120px;
+      height:4px;
+      border-radius:2px;
+      background:linear-gradient(to bottom, #facc15, #f59e0b);
+      outline:none;
+      transform:rotate(-90deg);
+      transform-origin:center;
+      cursor:pointer;
+    }
+    #zoom-container input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width:16px;
+      height:16px;
+      border-radius:50%;
+      background:#facc15;
+      cursor:pointer;
+      box-shadow:0 0 6px rgba(250,204,21,.6);
+    }
+    #zoom-container input[type="range"]::-moz-range-thumb {
+      width:16px;
+      height:16px;
+      border-radius:50%;
+      background:#facc15;
+      cursor:pointer;
+      border:none;
+    }
+    #zoom-container .zoom-value {
+      color:#fff;
+      font-size:12px;
+      font-weight:700;
+      min-width:36px;
+      text-align:center;
+      margin-top:4px;
+    }
+
+    /* ---- FAB samping kanan ---- */
     .side-fabs {
       position:absolute; top:50%; right:18px; transform:translateY(-50%);
       display:flex; flex-direction:column; gap:14px;
@@ -196,70 +262,6 @@
       color:rgba(255,255,255,.7); font-size:9px; font-weight:600;
       text-align:center; margin-top:-8px; pointer-events:none;
       text-shadow:0 1px 3px rgba(0,0,0,.8);
-    }
-
-    /* ---- SLIDER ZOOM ---- */
-    .zoom-controls {
-      position:absolute; bottom:150px; left:50%; transform:translateX(-50%);
-      width:80%; max-width:300px;
-      background:rgba(0,0,0,.65);
-      backdrop-filter:blur(8px);
-      border-radius:30px;
-      padding:12px 18px;
-      display:flex;
-      align-items:center;
-      gap:12px;
-      z-index:8;
-      border:1px solid rgba(255,255,255,.15);
-      pointer-events:auto;
-    }
-    .zoom-controls label {
-      color:#fff;
-      font-size:13px;
-      font-weight:600;
-      white-space:nowrap;
-      display:flex;
-      align-items:center;
-      gap:4px;
-    }
-    .zoom-controls input[type="range"] {
-      flex:1;
-      -webkit-appearance: none;
-      appearance: none;
-      height:4px;
-      border-radius:2px;
-      background:linear-gradient(to right, #facc15, #f59e0b);
-      outline:none;
-      transition:background .2s;
-    }
-    .zoom-controls input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width:16px;
-      height:16px;
-      border-radius:50%;
-      background:#facc15;
-      cursor:pointer;
-      box-shadow:0 0 6px rgba(250,204,21,.6);
-    }
-    .zoom-controls input[type="range"]::-moz-range-thumb {
-      width:16px;
-      height:16px;
-      border-radius:50%;
-      background:#facc15;
-      cursor:pointer;
-      border:none;
-    }
-    .zoom-controls .zoom-value {
-      color:#fff;
-      font-size:13px;
-      font-weight:700;
-      min-width:36px;
-      text-align:center;
-    }
-    .zoom-controls .zoom-icon {
-      color:#facc15;
-      font-size:16px;
     }
 
     /* ---- Tombol Lihat Info ---- */
@@ -399,17 +401,17 @@
     </div>
   </div>
 
-  <!-- Zoom Slider -->
-  <div class="zoom-controls" id="zoom-controls">
-    <label class="zoom-icon">🔍</label>
-    <input type="range" id="zoom-slider" min="1" max="4" step="0.1" value="1" disabled>
+  <!-- Zoom Container (kiri, vertikal) -->
+  <div id="zoom-container">
+    <span class="zoom-label">ZOOM</span>
+    <input type="range" id="zoom-slider" min="1" max="4" step="0.1" value="1">
     <span class="zoom-value" id="zoom-value">1.0x</span>
   </div>
 
   <!-- Hasil tes gambar -->
   <div class="img-result" id="img-test-result"></div>
 
-  <!-- FAB -->
+  <!-- FAB kanan -->
   <div class="side-fabs">
     <button class="fab" onclick="App.go('daftar.html')" title="Daftar gedung">
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round">
