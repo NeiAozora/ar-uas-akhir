@@ -1,5 +1,8 @@
 // =====================================================================
-// UNEJ Heritage AR — SCANNER (Zoom fix: min 0.3, soft zoom fallback)
+// UNEJ Heritage AR — SCANNER
+// - Zoom slider: 0.3x – 4.0x (soft zoom via CSS scale)
+// - Upload gambar: fix stuck, error handling
+// - Filter OBS, deteksi mobile (kamera belakang)
 // =====================================================================
 
 let Scanner = (function () {
@@ -13,8 +16,8 @@ let Scanner = (function () {
   let currentCameraIndex = 0;
   let currentStream = null;
   let zoomCapabilities = null;
-  let useSoftZoom = true;        // default pakai soft zoom
-  let currentZoom = 0.1;
+  let useSoftZoom = true;
+  let currentZoom = 1.0;
   let videoElement = null;
 
   const ui = {};
@@ -266,12 +269,11 @@ let Scanner = (function () {
     startCamera(cam.id);
   }
 
-  // ========== ZOOM DENGAN MIN 0.3 ==========
+  // ========== ZOOM : RANGE 0.3 – 4.0 ==========
   function setupZoom(stream) {
     if (!ui.zoomControls) return;
     const videoTrack = stream.getVideoTracks()[0];
     if (!videoTrack) {
-      // Tidak ada track, pakai soft zoom dengan min 0.3
       useSoftZoom = true;
       initZoomSlider(0.3, 4.0, 0.1);
       return;
@@ -280,10 +282,8 @@ let Scanner = (function () {
     const capabilities = videoTrack.getCapabilities ? videoTrack.getCapabilities() : {};
     if (capabilities.zoom) {
       zoomCapabilities = capabilities.zoom;
-      // Hardware zoom biasanya min >= 1, kita tetap set min slider 0.3
-      // Tapi kita akan gunakan hardware hanya jika nilai >= 1
-      useSoftZoom = false; // akan di-override di applyZoom
-      initZoomSlider(0.3, Math.max(4, zoomCapabilities.max || 4), 0.1);
+      useSoftZoom = false; // akan di-override jika hardware gagal
+      initZoomSlider(0.3, Math.max(4.0, zoomCapabilities.max || 4.0), 0.1);
       console.log("✅ Hardware zoom tersedia (min:", zoomCapabilities.min, "max:", zoomCapabilities.max, ")");
     } else {
       useSoftZoom = true;
@@ -294,14 +294,12 @@ let Scanner = (function () {
 
   function initZoomSlider(min, max, step) {
     if (!ui.zoomSlider) return;
-
-    // Pastikan min tidak lebih dari max
     if (min >= max) { min = 0.3; max = 4.0; }
 
     ui.zoomSlider.min = min;
     ui.zoomSlider.max = max;
     ui.zoomSlider.step = step;
-    // Set default ke 1.0 (atau min jika min > 1)
+    // Default ke 1.0 (atau min jika min > 1)
     let defaultValue = Math.min(Math.max(1.0, min), max);
     ui.zoomSlider.value = defaultValue;
     ui.zoomSlider.disabled = false;
@@ -319,14 +317,13 @@ let Scanner = (function () {
   }
 
   function applyZoom(value) {
-    // Batasi sesuai slider range
     const min = parseFloat(ui.zoomSlider.min) || 0.3;
     const max = parseFloat(ui.zoomSlider.max) || 4.0;
     const clamped = Math.min(Math.max(value, min), max);
     currentZoom = clamped;
     updateZoomDisplay(clamped);
 
-    // Tentukan apakah akan pakai hardware atau soft
+    // Coba hardware zoom jika memungkinkan dan nilai >= 1
     let useHardware = false;
     if (!useSoftZoom && zoomCapabilities && clamped >= 1.0) {
       useHardware = true;
@@ -335,8 +332,6 @@ let Scanner = (function () {
     if (useHardware && currentStream) {
       const videoTrack = currentStream.getVideoTracks()[0];
       if (videoTrack) {
-        // Hardware zoom: nilai biasanya di antara min dan max hardware, kita gunakan clamped
-        // Tapi hardware min mungkin > 1, kita sesuaikan
         const hwMin = zoomCapabilities.min || 1;
         const hwMax = zoomCapabilities.max || 4;
         const hwVal = Math.min(Math.max(clamped, hwMin), hwMax);
@@ -344,29 +339,25 @@ let Scanner = (function () {
           advanced: [{ zoom: hwVal }]
         })
         .then(() => {
-          // Sukses, tidak perlu soft
           console.log("Hardware zoom applied:", hwVal);
         })
         .catch(err => {
-          console.error("Gagal apply hardware zoom, fallback ke soft:", err);
-          // Gagal, pakai soft zoom
+          console.error("Hardware zoom gagal, fallback ke soft:", err);
           applySoftZoom(clamped);
         });
-        return; // keluar, karena kita sudah handle
+        return;
       }
     }
 
-    // Jika sampai sini, pakai soft zoom
+    // Soft zoom (CSS scale)
     applySoftZoom(clamped);
   }
 
   function applySoftZoom(scale) {
     if (videoElement) {
-      // Gabungkan dengan translate yang sudah ada
       videoElement.style.transform = `translate(-50%, -50%) scale(${scale})`;
       videoElement.style.transformOrigin = 'center center';
     } else {
-      // coba cari video lagi
       videoElement = document.querySelector("#qr-reader video");
       if (videoElement) {
         videoElement.style.transform = `translate(-50%, -50%) scale(${scale})`;
@@ -403,19 +394,40 @@ let Scanner = (function () {
     setLabel("Arahkan ke QR gedung…", "idle");
   }
 
-  // ---------- UPLOAD GAMBAR ----------
+  // ========== UPLOAD GAMBAR — FIX STUCK ==========
   function onImageFileSelected(e) {
     const file = e.target.files[0];
-    if (!file) return;
-    if (!ui.imgResult) return;
+    if (!file) {
+      console.warn("Tidak ada file dipilih");
+      return;
+    }
+    if (!ui.imgResult) {
+      console.error("Element img-result tidak ditemukan");
+      return;
+    }
 
+    // Tampilkan status scanning
     ui.imgResult.className = "img-result scanning";
     ui.imgResult.textContent = "🔍 Memproses gambar…";
 
-    const scanner = html5QrCode || new Html5Qrcode("qr-reader-img-dummy");
+    // Pastikan instance scanner tersedia
+    let scanner = html5QrCode;
+    if (!scanner) {
+      try {
+        scanner = new Html5Qrcode("qr-reader-img-dummy");
+      } catch (err) {
+        ui.imgResult.className = "img-result invalid";
+        ui.imgResult.innerHTML = "❌ Gagal inisialisasi scanner: " + err.message;
+        showToast("❌ Error scanner", "invalid");
+        e.target.value = "";
+        return;
+      }
+    }
 
+    // Jalankan scanFile
     scanner.scanFile(file, false)
       .then(decodedText => {
+        console.log("Decoded:", decodedText);
         const b = DB.byQR(decodedText);
         if (b) {
           ui.imgResult.className = "img-result valid";
@@ -428,18 +440,22 @@ let Scanner = (function () {
           ui.imgResult.innerHTML =
             "⚠️ <strong>QR terbaca tapi tidak dikenali</strong><br>" +
             "<small>Nilai: " + decodedText + "</small>";
-          showToast("⚠️ QR terbaca tapi bukan gedung UNEJ", "invalid");
+          showToast("⚠️ QR bukan gedung UNEJ", "invalid");
         }
       })
-      .catch(() => {
+      .catch(err => {
+        console.error("Scan file error:", err);
         ui.imgResult.className = "img-result invalid";
         ui.imgResult.innerHTML =
           "❌ <strong>Tidak ditemukan QR code</strong><br>" +
-          "<small>Pastikan gambar memuat QR code yang jelas</small>";
-        showToast("❌ QR tidak ditemukan di gambar", "invalid");
+          "<small>Pastikan gambar memuat QR code yang jelas</small><br>" +
+          "<span style='font-size:11px;color:#888;'>Error: " + (err.message || err) + "</span>";
+        showToast("❌ QR tidak ditemukan", "invalid");
+      })
+      .finally(() => {
+        // Reset input agar file yang sama bisa dipilih ulang
+        e.target.value = "";
       });
-
-    e.target.value = "";
   }
 
   // ========== PUBLIC API ==========
@@ -454,12 +470,18 @@ let Scanner = (function () {
   };
 })();
 
-// ---------- EVENT UPLOAD ----------
+// ---------- EVENT UPLOAD (dipasang ulang agar tidak double) ----------
 document.addEventListener("DOMContentLoaded", function() {
   const input = document.getElementById("img-file-input");
   if (input) {
-    input.addEventListener("change", function(e) {
+    // Clone untuk menghapus listener lama
+    const newInput = input.cloneNode(true);
+    input.parentNode.replaceChild(newInput, input);
+    newInput.addEventListener("change", function(e) {
       Scanner.onImageFileSelected(e);
     });
+    console.log("✅ Event listener upload terpasang");
+  } else {
+    console.warn("Element #img-file-input tidak ditemukan");
   }
 });
