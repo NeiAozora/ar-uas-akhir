@@ -1,7 +1,11 @@
+// =====================================================================
+// UNEJ Heritage AR — SCANNER (Zoom fix: min 0.3, soft zoom fallback)
+// =====================================================================
+
 let Scanner = (function () {
-  let html5QrCode = null;
+  let html5QrCode   = null;
   let currentBuilding = null;
-  let lastQR = null;
+  let lastQR        = null;
   let invalidTimeout = null;
   let scannerRunning = false;
 
@@ -9,16 +13,13 @@ let Scanner = (function () {
   let currentCameraIndex = 0;
   let currentStream = null;
   let zoomCapabilities = null;
-  let useSoftZoom = false;
+  let useSoftZoom = true;        // default pakai soft zoom
   let currentZoom = 1.0;
   let videoElement = null;
 
-  const ZOOM_MIN = 0.25;
-  const ZOOM_MAX = 4.0;
-  const ZOOM_STEP = 0.05;
-
   const ui = {};
 
+  // ---------- DETEKSI MOBILE ----------
   function isMobile() {
     const width = window.innerWidth;
     const ua = navigator.userAgent || navigator.vendor || window.opera;
@@ -26,28 +27,30 @@ let Scanner = (function () {
     return (width <= 768) || mobileKeywords.test(ua);
   }
 
+  // ---------- CACHE UI ----------
   function cacheUI() {
-    ui.label = document.getElementById("detected-text");
-    ui.dot = document.getElementById("dot-indicator");
-    ui.sheet = document.getElementById("bottom-sheet");
-    ui.backdrop = document.getElementById("popup-backdrop");
-    ui.sheetTag = document.getElementById("sheet-tag");
-    ui.sheetTitle = document.getElementById("sheet-title");
-    ui.sheetImg = document.getElementById("sheet-thumb");
-    ui.sheetDesc = document.getElementById("sheet-desc");
-    ui.sheetBtn = document.getElementById("sheet-action");
-    ui.toast = document.getElementById("scan-toast");
-    ui.toastMsg = document.getElementById("toast-msg");
-    ui.imgInput = document.getElementById("img-file-input");
-    ui.imgResult = document.getElementById("img-test-result");
-    ui.viewfinder = document.getElementById("viewfinder");
-    ui.zoomSlider = document.getElementById("zoom-slider");
-    ui.zoomValue = document.getElementById("zoom-value");
+    ui.label       = document.getElementById("detected-text");
+    ui.dot         = document.getElementById("dot-indicator");
+    ui.sheet       = document.getElementById("bottom-sheet");
+    ui.backdrop    = document.getElementById("popup-backdrop");
+    ui.sheetTag    = document.getElementById("sheet-tag");
+    ui.sheetTitle  = document.getElementById("sheet-title");
+    ui.sheetImg    = document.getElementById("sheet-thumb");
+    ui.sheetDesc   = document.getElementById("sheet-desc");
+    ui.sheetBtn    = document.getElementById("sheet-action");
+    ui.toast       = document.getElementById("scan-toast");
+    ui.toastMsg    = document.getElementById("toast-msg");
+    ui.imgInput    = document.getElementById("img-file-input");
+    ui.imgResult   = document.getElementById("img-test-result");
+    ui.viewfinder  = document.getElementById("viewfinder");
+    ui.zoomSlider  = document.getElementById("zoom-slider");
+    ui.zoomValue   = document.getElementById("zoom-value");
     ui.zoomControls = document.getElementById("zoom-controls");
-    ui.debugModal = document.getElementById("debug-modal");
+    ui.debugModal  = document.getElementById("debug-modal");
     ui.debugContent = document.getElementById("debug-content");
   }
 
+  // ---------- TOAST / LABEL ----------
   function showToast(msg, state) {
     if (!ui.toast) return;
     ui.toastMsg.textContent = msg;
@@ -63,7 +66,7 @@ let Scanner = (function () {
     if (ui.dot) {
       const colors = { ok: "#4ade80", invalid: "#f87171", idle: "#facc15" };
       ui.dot.style.background = colors[state] || "#facc15";
-      ui.dot.style.boxShadow = "0 0 8px " + (colors[state] || "#facc15");
+      ui.dot.style.boxShadow  = "0 0 8px " + (colors[state] || "#facc15");
     }
   }
 
@@ -75,6 +78,7 @@ let Scanner = (function () {
     setTimeout(() => ui.viewfinder.classList.remove("pulse-ok", "pulse-invalid"), 900);
   }
 
+  // ---------- DEBUG POPUP ----------
   function showDebugLog(error, extra) {
     if (!ui.debugModal) return;
     let content = "🚨 ERROR START VIDEO\n\n";
@@ -85,6 +89,7 @@ let Scanner = (function () {
     ui.debugModal.classList.add("show");
   }
 
+  // ---------- QR CALLBACK ----------
   function onScanSuccess(decodedText) {
     if (decodedText === lastQR) return;
     lastQR = decodedText;
@@ -111,6 +116,7 @@ let Scanner = (function () {
     }
   }
 
+  // ---------- START ----------
   function start() {
     cacheUI();
     setLabel("Mengaktifkan kamera…", "idle");
@@ -143,6 +149,7 @@ let Scanner = (function () {
             return label.includes("back") || label.includes("rear");
           });
           if (filtered.length === 0) {
+            console.warn("Tidak ada kamera 'back', ambil semua kecuali OBS/virtual");
             filtered = cameras.filter(cam => {
               const label = cam.label.toLowerCase();
               return !label.includes("obs") && !label.includes("virtual");
@@ -183,6 +190,7 @@ let Scanner = (function () {
       });
   }
 
+  // ---------- STOP ----------
   function stopCamera() {
     if (html5QrCode && scannerRunning) {
       html5QrCode.stop().catch(() => {});
@@ -196,6 +204,7 @@ let Scanner = (function () {
     if (ui.zoomControls) ui.zoomControls.style.display = "none";
   }
 
+  // ---------- START KAMERA ----------
   function startCamera(cameraId) {
     stopCamera();
 
@@ -211,7 +220,8 @@ let Scanner = (function () {
     setLabel("Memulai kamera…", "idle");
 
     html5QrCode.start(
-      cameraId, {
+      cameraId,
+      {
         fps: 12,
         qrbox: { width: qrSize, height: qrSize },
         aspectRatio: 1.333,
@@ -234,7 +244,7 @@ let Scanner = (function () {
             currentStream = html5QrCode.getMediaStream();
             setupZoom(currentStream);
           }
-        } catch (e) {}
+        } catch(e) {}
       }
     })
     .catch(err => {
@@ -244,6 +254,7 @@ let Scanner = (function () {
     });
   }
 
+  // ---------- SWITCH KAMERA ----------
   function switchCamera() {
     if (!cameraList || cameraList.length < 2) {
       showToast("Hanya ada 1 kamera", "invalid");
@@ -255,38 +266,46 @@ let Scanner = (function () {
     startCamera(cam.id);
   }
 
+  // ========== ZOOM DENGAN MIN 0.3 ==========
   function setupZoom(stream) {
     if (!ui.zoomControls) return;
     const videoTrack = stream.getVideoTracks()[0];
-
-    if (videoTrack) {
-      const capabilities = videoTrack.getCapabilities ? videoTrack.getCapabilities() : {};
-      if (capabilities.zoom) {
-        zoomCapabilities = capabilities.zoom;
-        useSoftZoom = false;
-        const min = Math.max(ZOOM_MIN, zoomCapabilities.min || ZOOM_MIN);
-        const max = Math.min(ZOOM_MAX, zoomCapabilities.max || ZOOM_MAX);
-        const step = zoomCapabilities.step || ZOOM_STEP;
-        initZoomSlider(min, max, step);
-        console.log("✅ Zoom hardware didukung");
-        return;
-      }
+    if (!videoTrack) {
+      // Tidak ada track, pakai soft zoom dengan min 0.3
+      useSoftZoom = true;
+      initZoomSlider(0.3, 4.0, 0.1);
+      return;
     }
 
-    useSoftZoom = true;
-    initZoomSlider(ZOOM_MIN, ZOOM_MAX, ZOOM_STEP);
-    console.log("⚠️ Zoom hardware tidak support, pakai soft zoom (CSS)");
+    const capabilities = videoTrack.getCapabilities ? videoTrack.getCapabilities() : {};
+    if (capabilities.zoom) {
+      zoomCapabilities = capabilities.zoom;
+      // Hardware zoom biasanya min >= 1, kita tetap set min slider 0.3
+      // Tapi kita akan gunakan hardware hanya jika nilai >= 1
+      useSoftZoom = false; // akan di-override di applyZoom
+      initZoomSlider(0.3, Math.max(4, zoomCapabilities.max || 4), 0.1);
+      console.log("✅ Hardware zoom tersedia (min:", zoomCapabilities.min, "max:", zoomCapabilities.max, ")");
+    } else {
+      useSoftZoom = true;
+      initZoomSlider(0.3, 4.0, 0.1);
+      console.log("⚠️ Zoom hardware tidak support, pakai soft zoom (CSS)");
+    }
   }
 
   function initZoomSlider(min, max, step) {
     if (!ui.zoomSlider) return;
 
+    // Pastikan min tidak lebih dari max
+    if (min >= max) { min = 0.3; max = 4.0; }
+
     ui.zoomSlider.min = min;
     ui.zoomSlider.max = max;
     ui.zoomSlider.step = step;
-    ui.zoomSlider.value = 1.0;
+    // Set default ke 1.0 (atau min jika min > 1)
+    let defaultValue = Math.min(Math.max(1.0, min), max);
+    ui.zoomSlider.value = defaultValue;
     ui.zoomSlider.disabled = false;
-    updateZoomDisplay(1.0);
+    updateZoomDisplay(defaultValue);
 
     ui.zoomControls.style.display = "flex";
 
@@ -295,53 +314,80 @@ let Scanner = (function () {
       applyZoom(val);
     };
 
-    applyZoom(1.0);
+    // Terapkan nilai awal
+    applyZoom(defaultValue);
   }
 
   function applyZoom(value) {
-    const min = parseFloat(ui.zoomSlider.min) || ZOOM_MIN;
-    const max = parseFloat(ui.zoomSlider.max) || ZOOM_MAX;
+    // Batasi sesuai slider range
+    const min = parseFloat(ui.zoomSlider.min) || 0.3;
+    const max = parseFloat(ui.zoomSlider.max) || 4.0;
     const clamped = Math.min(Math.max(value, min), max);
     currentZoom = clamped;
+    updateZoomDisplay(clamped);
 
-    if (useSoftZoom) {
-      if (videoElement) {
-        const scale = clamped;
-        videoElement.style.transform = "translate(-50%, -50%) scale(" + scale + ")";
-        videoElement.style.transformOrigin = "center center";
-      }
-      updateZoomDisplay(clamped);
-    } else {
-      if (!currentStream) return;
+    // Tentukan apakah akan pakai hardware atau soft
+    let useHardware = false;
+    if (!useSoftZoom && zoomCapabilities && clamped >= 1.0) {
+      useHardware = true;
+    }
+
+    if (useHardware && currentStream) {
       const videoTrack = currentStream.getVideoTracks()[0];
-      if (!videoTrack) return;
-      videoTrack.applyConstraints({
-        advanced: [{ zoom: clamped }]
-      })
-      .then(() => {
-        updateZoomDisplay(clamped);
-      })
-      .catch(err => {
-        console.error("Gagal apply hardware zoom:", err);
-        useSoftZoom = true;
-        applyZoom(clamped);
-      });
+      if (videoTrack) {
+        // Hardware zoom: nilai biasanya di antara min dan max hardware, kita gunakan clamped
+        // Tapi hardware min mungkin > 1, kita sesuaikan
+        const hwMin = zoomCapabilities.min || 1;
+        const hwMax = zoomCapabilities.max || 4;
+        const hwVal = Math.min(Math.max(clamped, hwMin), hwMax);
+        videoTrack.applyConstraints({
+          advanced: [{ zoom: hwVal }]
+        })
+        .then(() => {
+          // Sukses, tidak perlu soft
+          console.log("Hardware zoom applied:", hwVal);
+        })
+        .catch(err => {
+          console.error("Gagal apply hardware zoom, fallback ke soft:", err);
+          // Gagal, pakai soft zoom
+          applySoftZoom(clamped);
+        });
+        return; // keluar, karena kita sudah handle
+      }
+    }
+
+    // Jika sampai sini, pakai soft zoom
+    applySoftZoom(clamped);
+  }
+
+  function applySoftZoom(scale) {
+    if (videoElement) {
+      // Gabungkan dengan translate yang sudah ada
+      videoElement.style.transform = `translate(-50%, -50%) scale(${scale})`;
+      videoElement.style.transformOrigin = 'center center';
+    } else {
+      // coba cari video lagi
+      videoElement = document.querySelector("#qr-reader video");
+      if (videoElement) {
+        videoElement.style.transform = `translate(-50%, -50%) scale(${scale})`;
+        videoElement.style.transformOrigin = 'center center';
+      }
     }
   }
 
   function updateZoomDisplay(val) {
     if (ui.zoomValue) {
-      const percent = (parseFloat(val) * 100).toFixed(0);
-      ui.zoomValue.textContent = percent + "%";
+      ui.zoomValue.textContent = parseFloat(val).toFixed(1) + "x";
     }
   }
 
+  // ---------- BOTTOM SHEET ----------
   function fillSheet(b) {
-    ui.sheetTag.textContent = b.tag;
+    ui.sheetTag.textContent   = b.tag;
     ui.sheetTitle.textContent = b.name;
-    ui.sheetImg.src = b.image;
-    ui.sheetDesc.textContent = b.short + " " + b.history.slice(0, 90) + "…";
-    ui.sheetBtn.onclick = () => App.goDetail(b.id);
+    ui.sheetImg.src           = b.image;
+    ui.sheetDesc.textContent  = b.short + " " + b.history.slice(0, 90) + "…";
+    ui.sheetBtn.onclick       = () => App.goDetail(b.id);
   }
 
   function openSheet() {
@@ -357,6 +403,7 @@ let Scanner = (function () {
     setLabel("Arahkan ke QR gedung…", "idle");
   }
 
+  // ---------- UPLOAD GAMBAR ----------
   function onImageFileSelected(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -395,19 +442,21 @@ let Scanner = (function () {
     e.target.value = "";
   }
 
+  // ========== PUBLIC API ==========
   return {
-    start: start,
+    start,
     stop: stopCamera,
-    openSheet: openSheet,
-    closeSheet: closeSheet,
-    getCurrent: function() { return currentBuilding; },
-    switchCamera: switchCamera,
-    onImageFileSelected: onImageFileSelected
+    openSheet,
+    closeSheet,
+    getCurrent: () => currentBuilding,
+    switchCamera,
+    onImageFileSelected,
   };
 })();
 
+// ---------- EVENT UPLOAD ----------
 document.addEventListener("DOMContentLoaded", function() {
-  var input = document.getElementById("img-file-input");
+  const input = document.getElementById("img-file-input");
   if (input) {
     input.addEventListener("change", function(e) {
       Scanner.onImageFileSelected(e);
