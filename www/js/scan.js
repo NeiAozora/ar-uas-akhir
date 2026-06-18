@@ -1,6 +1,6 @@
 // =====================================================================
 // UNEJ Heritage AR — SCANNER
-// - Upload gambar: stop camera dengan promise, scan, restart
+// - Upload gambar: stop camera, scan, buka bottom sheet jika valid
 // - Zoom slider: 0.3x – 4.0x (soft zoom via CSS)
 // - Filter OBS, deteksi mobile (kamera belakang)
 // =====================================================================
@@ -211,7 +211,6 @@ let Scanner = (function () {
 
   // ---------- START KAMERA ----------
   function startCamera(cameraId) {
-    // Stop dulu (dengan promise) untuk memastikan bersih
     if (html5QrCode && scannerRunning) {
       html5QrCode.stop()
         .then(() => {
@@ -409,7 +408,7 @@ let Scanner = (function () {
     setLabel("Arahkan ke QR gedung…", "idle");
   }
 
-  // ========== UPLOAD GAMBAR — FIX "ongoing camera scan" ==========
+  // ========== UPLOAD GAMBAR — DENGAN POPUP BOTTOM SHEET ==========
   function onImageFileSelected(e) {
     const file = e.target.files[0];
     if (!file) {
@@ -424,12 +423,9 @@ let Scanner = (function () {
     ui.imgResult.className = "img-result scanning";
     ui.imgResult.textContent = "🔍 Memproses gambar…";
 
-    // Flag apakah kamera sedang berjalan
     const wasRunning = scannerRunning;
 
-    // Fungsi untuk melakukan scan setelah kamera berhenti
     function performScan() {
-      // Pastikan scanner sudah berhenti
       let scanner = html5QrCode;
       if (!scanner) {
         try {
@@ -439,7 +435,6 @@ let Scanner = (function () {
           ui.imgResult.innerHTML = "❌ Gagal inisialisasi scanner: " + err.message;
           showToast("❌ Error scanner", "invalid");
           e.target.value = "";
-          // Restart kamera jika perlu
           if (wasRunning && currentCameraId) {
             startCamera(currentCameraId);
           }
@@ -452,11 +447,19 @@ let Scanner = (function () {
           console.log("Decoded:", decodedText);
           const b = DB.byQR(decodedText);
           if (b) {
+            // Tampilkan hasil di imgResult
             ui.imgResult.className = "img-result valid";
             ui.imgResult.innerHTML =
               "✅ <strong>QR Valid!</strong><br>Gedung: " + b.name +
               "<br><small>Nilai: " + decodedText + "</small>";
             showToast("✅ Gambar valid: " + b.name, "ok");
+
+            // ===== BUKA BOTTOM SHEET SAMA SEPERTI SCAN KAMERA =====
+            currentBuilding = b;
+            fillSheet(b);
+            openSheet();
+            if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
+
           } else {
             ui.imgResult.className = "img-result invalid";
             ui.imgResult.innerHTML =
@@ -475,13 +478,9 @@ let Scanner = (function () {
           showToast("❌ QR tidak ditemukan", "invalid");
         })
         .finally(() => {
-          // Reset input
           e.target.value = "";
-
-          // Restart kamera jika sebelumnya berjalan
           if (wasRunning && currentCameraId) {
             console.log("Restart kamera setelah scan file...");
-            // Tunggu sebentar agar resource bersih
             setTimeout(() => {
               startCamera(currentCameraId);
             }, 300);
@@ -489,7 +488,6 @@ let Scanner = (function () {
         });
     }
 
-    // Jika kamera sedang berjalan, hentikan dulu dengan promise
     if (wasRunning && html5QrCode) {
       console.log("Menghentikan kamera sementara untuk scan file...");
       html5QrCode.stop()
@@ -503,7 +501,6 @@ let Scanner = (function () {
           performScan();
         });
     } else {
-      // Kamera tidak berjalan, langsung scan
       performScan();
     }
   }
@@ -520,7 +517,7 @@ let Scanner = (function () {
   };
 })();
 
-// ---------- EVENT UPLOAD (dipasang ulang) ----------
+// ---------- EVENT UPLOAD ----------
 document.addEventListener("DOMContentLoaded", function() {
   const input = document.getElementById("img-file-input");
   if (input) {
