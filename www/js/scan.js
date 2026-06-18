@@ -1,6 +1,6 @@
 // =====================================================================
 // UNEJ Heritage AR — SCANNER
-// - Upload gambar: stop camera dulu, scan file, restart camera
+// - Upload gambar: stop camera dengan promise, scan, restart
 // - Zoom slider: 0.3x – 4.0x (soft zoom via CSS)
 // - Filter OBS, deteksi mobile (kamera belakang)
 // =====================================================================
@@ -19,7 +19,7 @@ let Scanner = (function () {
   let useSoftZoom = true;
   let currentZoom = 1.0;
   let videoElement = null;
-  let currentCameraId = null; // simpan ID kamera terakhir
+  let currentCameraId = null;
 
   const ui = {};
 
@@ -211,10 +211,23 @@ let Scanner = (function () {
 
   // ---------- START KAMERA ----------
   function startCamera(cameraId) {
-    // Jangan stop dulu jika sedang berjalan (bisa digunakan untuk restart)
-    // Tapi untuk amannya, kita stop dulu
-    stopCamera();
+    // Stop dulu (dengan promise) untuk memastikan bersih
+    if (html5QrCode && scannerRunning) {
+      html5QrCode.stop()
+        .then(() => {
+          scannerRunning = false;
+          _startCamera(cameraId);
+        })
+        .catch(() => {
+          scannerRunning = false;
+          _startCamera(cameraId);
+        });
+    } else {
+      _startCamera(cameraId);
+    }
+  }
 
+  function _startCamera(cameraId) {
     if (!html5QrCode) {
       html5QrCode = new Html5Qrcode("qr-reader");
     }
@@ -411,76 +424,88 @@ let Scanner = (function () {
     ui.imgResult.className = "img-result scanning";
     ui.imgResult.textContent = "🔍 Memproses gambar…";
 
-    // 1. Hentikan scanner kamera jika sedang berjalan
+    // Flag apakah kamera sedang berjalan
     const wasRunning = scannerRunning;
-    if (wasRunning) {
-      console.log("Menghentikan kamera sementara untuk scan file...");
-      // Hentikan tanpa menghapus instance
-      if (html5QrCode) {
-        html5QrCode.stop().catch(() => {});
-        scannerRunning = false;
-      }
-    }
 
-    // 2. Siapkan scanner untuk file
-    let scanner = html5QrCode;
-    if (!scanner) {
-      try {
-        scanner = new Html5Qrcode("qr-reader-img-dummy");
-      } catch (err) {
-        ui.imgResult.className = "img-result invalid";
-        ui.imgResult.innerHTML = "❌ Gagal inisialisasi scanner: " + err.message;
-        showToast("❌ Error scanner", "invalid");
-        e.target.value = "";
-        // Restart kamera jika perlu
-        if (wasRunning && currentCameraId) {
-          startCamera(currentCameraId);
+    // Fungsi untuk melakukan scan setelah kamera berhenti
+    function performScan() {
+      // Pastikan scanner sudah berhenti
+      let scanner = html5QrCode;
+      if (!scanner) {
+        try {
+          scanner = new Html5Qrcode("qr-reader-img-dummy");
+        } catch (err) {
+          ui.imgResult.className = "img-result invalid";
+          ui.imgResult.innerHTML = "❌ Gagal inisialisasi scanner: " + err.message;
+          showToast("❌ Error scanner", "invalid");
+          e.target.value = "";
+          // Restart kamera jika perlu
+          if (wasRunning && currentCameraId) {
+            startCamera(currentCameraId);
+          }
+          return;
         }
-        return;
       }
-    }
 
-    // 3. Scan file
-    scanner.scanFile(file, false)
-      .then(decodedText => {
-        console.log("Decoded:", decodedText);
-        const b = DB.byQR(decodedText);
-        if (b) {
-          ui.imgResult.className = "img-result valid";
-          ui.imgResult.innerHTML =
-            "✅ <strong>QR Valid!</strong><br>Gedung: " + b.name +
-            "<br><small>Nilai: " + decodedText + "</small>";
-          showToast("✅ Gambar valid: " + b.name, "ok");
-        } else {
+      scanner.scanFile(file, false)
+        .then(decodedText => {
+          console.log("Decoded:", decodedText);
+          const b = DB.byQR(decodedText);
+          if (b) {
+            ui.imgResult.className = "img-result valid";
+            ui.imgResult.innerHTML =
+              "✅ <strong>QR Valid!</strong><br>Gedung: " + b.name +
+              "<br><small>Nilai: " + decodedText + "</small>";
+            showToast("✅ Gambar valid: " + b.name, "ok");
+          } else {
+            ui.imgResult.className = "img-result invalid";
+            ui.imgResult.innerHTML =
+              "⚠️ <strong>QR terbaca tapi tidak dikenali</strong><br>" +
+              "<small>Nilai: " + decodedText + "</small>";
+            showToast("⚠️ QR bukan gedung UNEJ", "invalid");
+          }
+        })
+        .catch(err => {
+          console.error("Scan file error:", err);
           ui.imgResult.className = "img-result invalid";
           ui.imgResult.innerHTML =
-            "⚠️ <strong>QR terbaca tapi tidak dikenali</strong><br>" +
-            "<small>Nilai: " + decodedText + "</small>";
-          showToast("⚠️ QR bukan gedung UNEJ", "invalid");
-        }
-      })
-      .catch(err => {
-        console.error("Scan file error:", err);
-        ui.imgResult.className = "img-result invalid";
-        ui.imgResult.innerHTML =
-          "❌ <strong>Tidak ditemukan QR code</strong><br>" +
-          "<small>Pastikan gambar memuat QR code yang jelas</small><br>" +
-          "<span style='font-size:11px;color:#888;'>Error: " + (err.message || err) + "</span>";
-        showToast("❌ QR tidak ditemukan", "invalid");
-      })
-      .finally(() => {
-        // 4. Reset input
-        e.target.value = "";
+            "❌ <strong>Tidak ditemukan QR code</strong><br>" +
+            "<small>Pastikan gambar memuat QR code yang jelas</small><br>" +
+            "<span style='font-size:11px;color:#888;'>Error: " + (err.message || err) + "</span>";
+          showToast("❌ QR tidak ditemukan", "invalid");
+        })
+        .finally(() => {
+          // Reset input
+          e.target.value = "";
 
-        // 5. Restart kamera jika sebelumnya berjalan
-        if (wasRunning && currentCameraId) {
-          console.log("Restart kamera setelah scan file...");
-          // Tunggu sebentar agar resource bersih
-          setTimeout(() => {
-            startCamera(currentCameraId);
-          }, 300);
-        }
-      });
+          // Restart kamera jika sebelumnya berjalan
+          if (wasRunning && currentCameraId) {
+            console.log("Restart kamera setelah scan file...");
+            // Tunggu sebentar agar resource bersih
+            setTimeout(() => {
+              startCamera(currentCameraId);
+            }, 300);
+          }
+        });
+    }
+
+    // Jika kamera sedang berjalan, hentikan dulu dengan promise
+    if (wasRunning && html5QrCode) {
+      console.log("Menghentikan kamera sementara untuk scan file...");
+      html5QrCode.stop()
+        .then(() => {
+          scannerRunning = false;
+          performScan();
+        })
+        .catch(err => {
+          console.warn("Gagal stop kamera, lanjutkan scan:", err);
+          scannerRunning = false;
+          performScan();
+        });
+    } else {
+      // Kamera tidak berjalan, langsung scan
+      performScan();
+    }
   }
 
   // ========== PUBLIC API ==========
