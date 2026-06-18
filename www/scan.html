@@ -13,7 +13,7 @@
              https://cdn.jsdelivr.net https://unpkg.com;">
   <title>Pindai AR - UNEJ Heritage</title>
   <style>
-    /* ── Reset & Base ── */
+    /* ---- Reset & Base ---- */
     * { margin:0; padding:0; box-sizing:border-box;
         font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; }
     body { background:#000; color:#333; display:flex; justify-content:center; overflow:hidden; }
@@ -24,13 +24,12 @@
       box-shadow:0 0 15px rgba(0,0,0,.5);
     }
 
-    /* ── Wrapper kamera — ini yang kunci! overflow:hidden ketat ── */
+    /* ---- Wrapper kamera ---- */
     #camera-wrapper {
       position:absolute; top:0; left:0; width:100%; height:100%;
       overflow:hidden; z-index:1; background:#000;
     }
 
-    /* ── html5-qrcode container — paksa dalam wrapper ── */
     #qr-reader {
       position:absolute !important;
       top:0 !important; left:0 !important;
@@ -39,43 +38,43 @@
       background:#000;
     }
 
-    /* Sembunyikan SEMUA chrome bawaan html5-qrcode */
-    #qr-reader > img,
-    #qr-reader__header_message,
-    #qr-reader__status_span,
-    #qr-reader__dashboard,
-    #qr-reader__dashboard_section,
-    #qr-reader__dashboard_section_csr,
-    #qr-reader__dashboard_section_fsr,
-    #qr-reader__dashboard_section_swaplink,
-    #qr-reader__filescan_input,
-    #qr-reader__camera_permission_button,
-    #qr-reader button,
-    #qr-reader select,
-    #qr-reader span:not(#detected-text) {
-      display:none !important;
-    }
-
-    /* Video kamera — paksa full-fill, TIDAK boleh overflow */
+    /* Reset total untuk video */
     #qr-reader video,
-    #camera-wrapper video {
-      position:absolute !important;
-      top:50% !important; left:50% !important;
-      transform:translate(-50%,-50%) !important;
-      width:100% !important; height:100% !important;
-      min-width:100% !important; min-height:100% !important;
-      max-width:none !important;
-      object-fit:cover !important;
-      display:block !important;
+    #qr-reader .qr-reader__video video {
+      position: absolute !important;
+      top: 50% !important;
+      left: 50% !important;
+      transform: translate(-50%, -50%) !important;
+      min-width: 100% !important;
+      min-height: 100% !important;
+      width: auto !important;
+      height: auto !important;
+      object-fit: cover !important;
+      display: block !important;
+      background: #000 !important;
     }
 
-    /* Canvas scan — sembunyikan, tidak perlu tampil */
-    #qr-reader canvas,
-    #camera-wrapper canvas {
-      display:none !important;
+    #qr-reader > *:not(video):not(.qr-reader__video) {
+      display: none !important;
+    }
+    #qr-reader * {
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+    #qr-reader .qr-reader__dashboard,
+    #qr-reader .qr-reader__dashboard_section,
+    #qr-reader .qr-reader__dashboard_section_csr,
+    #qr-reader .qr-reader__dashboard_section_fsr,
+    #qr-reader .qr-reader__dashboard_section_swaplink,
+    #qr-reader .qr-reader__filescan_input,
+    #qr-reader .qr-reader__camera_permission_button,
+    #qr-reader button,
+    #qr-reader select {
+      display: none !important;
     }
 
-    /* ── Overlay gradient di atas video ── */
+    /* ---- Overlay ---- */
     .camera-overlay {
       position:absolute; top:0; left:0; width:100%; height:100%;
       background:linear-gradient(to bottom,
@@ -84,18 +83,17 @@
       z-index:2; pointer-events:none;
     }
 
-    /* ── Top header ── */
+    /* ---- Header ---- */
     .top-header {
       position:absolute; top:0; left:0; width:100%;
       display:flex; justify-content:space-between; align-items:center;
       padding:20px; z-index:10;
     }
     .header-left { display:flex; align-items:center; gap:10px; }
-    .header-left h1 { font-size:18px; font-weight:700; color:#fff;
-                      text-shadow:0 1px 4px rgba(0,0,0,.6); }
+    .header-left h1 { font-size:18px; font-weight:700; color:#fff; text-shadow:0 1px 4px rgba(0,0,0,.6); }
     .bell-icon { color:#fff; cursor:pointer; filter:drop-shadow(0 1px 3px rgba(0,0,0,.5)); }
 
-    /* ── Toast notifikasi ── */
+    /* ---- Toast ---- */
     .scan-toast {
       position:absolute; top:76px; left:50%;
       transform:translateX(-50%) translateY(-12px);
@@ -113,14 +111,12 @@
     .scan-toast.ok      { border-color:#4ade80; }
     .scan-toast.invalid { border-color:#f87171; }
 
-    /* ── Scanner UI — viewfinder layer ── */
+    /* ---- Viewfinder ---- */
     .scanner-ui {
       position:absolute; top:0; left:0; width:100%; height:100%;
       z-index:5; display:flex; flex-direction:column;
       justify-content:center; align-items:center; pointer-events:none;
     }
-
-    /* ── Viewfinder ── */
     .viewfinder {
       width:260px; height:260px;
       border:2px solid rgba(255,255,255,.75);
@@ -133,13 +129,12 @@
       content:''; position:absolute; width:24px; height:24px;
       border-color:#F4D03F; border-style:solid;
     }
-    .viewfinder::before { top:-2px;    left:-2px;  border-width:3px 0 0 3px; border-radius:20px 0 0 0; }
-    .viewfinder::after  { top:-2px;    right:-2px; border-width:3px 3px 0 0; border-radius:0 20px 0 0; }
+    .viewfinder::before { top:-2px; left:-2px; border-width:3px 0 0 3px; border-radius:20px 0 0 0; }
+    .viewfinder::after  { top:-2px; right:-2px; border-width:3px 3px 0 0; border-radius:0 20px 0 0; }
     .corner-br { position:absolute; inset:0; }
-    .corner-br::before  { bottom:-2px; left:-2px;  border-width:0 0 3px 3px; border-radius:0 0 0 20px; }
+    .corner-br::before  { bottom:-2px; left:-2px; border-width:0 0 3px 3px; border-radius:0 0 0 20px; }
     .corner-br::after   { bottom:-2px; right:-2px; border-width:0 3px 3px 0; border-radius:0 0 20px 0; }
 
-    /* Pulse animasi valid/invalid */
     @keyframes pulseGreen {
       0%   { box-shadow:0 0 0 9999px rgba(0,0,0,.30), 0 0 0 0 rgba(74,222,128,.7); }
       70%  { box-shadow:0 0 0 9999px rgba(0,0,0,.30), 0 0 0 22px rgba(74,222,128,0); }
@@ -153,9 +148,8 @@
     .viewfinder.pulse-ok      { border-color:#4ade80; animation:pulseGreen .75s ease-out; }
     .viewfinder.pulse-invalid { border-color:#f87171; animation:pulseRed .75s ease-out; }
 
-    /* Scan-line */
     @keyframes scanLine {
-      0%,100% { top:8%;  opacity:.9; }
+      0%,100% { top:8%; opacity:.9; }
       50%      { top:86%; opacity:.9; }
     }
     .scan-line {
@@ -164,7 +158,6 @@
       border-radius:2px; animation:scanLine 2.2s ease-in-out infinite;
     }
 
-    /* ── Label status ── */
     .detected-label {
       position:absolute; bottom:-54px; left:50%; transform:translateX(-50%);
       background:#023474; color:#fff; padding:10px 18px;
@@ -182,7 +175,7 @@
       transition:background .3s, box-shadow .3s;
     }
 
-    /* ── FAB samping ── */
+    /* ---- FAB samping ---- */
     .side-fabs {
       position:absolute; top:50%; right:18px; transform:translateY(-50%);
       display:flex; flex-direction:column; gap:14px;
@@ -199,14 +192,77 @@
       width:100%; height:100%; cursor:pointer; border-radius:50%;
     }
     #img-file-input { display:none; }
-
     .fab-hint {
       color:rgba(255,255,255,.7); font-size:9px; font-weight:600;
       text-align:center; margin-top:-8px; pointer-events:none;
       text-shadow:0 1px 3px rgba(0,0,0,.8);
     }
 
-    /* ── Tombol Lihat Info ── */
+    /* ---- SLIDER ZOOM ---- */
+    .zoom-controls {
+      position:absolute; bottom:150px; left:50%; transform:translateX(-50%);
+      width:80%; max-width:300px;
+      background:rgba(0,0,0,.65);
+      backdrop-filter:blur(8px);
+      border-radius:30px;
+      padding:12px 18px;
+      display:flex;
+      align-items:center;
+      gap:12px;
+      z-index:8;
+      border:1px solid rgba(255,255,255,.15);
+      pointer-events:auto;
+    }
+    .zoom-controls label {
+      color:#fff;
+      font-size:13px;
+      font-weight:600;
+      white-space:nowrap;
+      display:flex;
+      align-items:center;
+      gap:4px;
+    }
+    .zoom-controls input[type="range"] {
+      flex:1;
+      -webkit-appearance: none;
+      appearance: none;
+      height:4px;
+      border-radius:2px;
+      background:linear-gradient(to right, #facc15, #f59e0b);
+      outline:none;
+      transition:background .2s;
+    }
+    .zoom-controls input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width:16px;
+      height:16px;
+      border-radius:50%;
+      background:#facc15;
+      cursor:pointer;
+      box-shadow:0 0 6px rgba(250,204,21,.6);
+    }
+    .zoom-controls input[type="range"]::-moz-range-thumb {
+      width:16px;
+      height:16px;
+      border-radius:50%;
+      background:#facc15;
+      cursor:pointer;
+      border:none;
+    }
+    .zoom-controls .zoom-value {
+      color:#fff;
+      font-size:13px;
+      font-weight:700;
+      min-width:36px;
+      text-align:center;
+    }
+    .zoom-controls .zoom-icon {
+      color:#facc15;
+      font-size:16px;
+    }
+
+    /* ---- Tombol Lihat Info ---- */
     .bottom-action-container {
       position:absolute; bottom:88px; width:100%;
       display:flex; justify-content:center; z-index:10; pointer-events:auto;
@@ -219,26 +275,25 @@
     }
     .btn-info:active { background:#011e46; }
 
-    /* ── Hasil tes gambar ── */
+    /* ---- Hasil tes gambar ---- */
     .img-result {
-      position:absolute; bottom:150px; left:50%; transform:translateX(-50%);
+      position:absolute; bottom:200px; left:50%; transform:translateX(-50%);
       background:rgba(255,255,255,.97); border-radius:14px;
       padding:12px 18px; font-size:13px; line-height:1.7;
       z-index:15; width:88%; max-width:320px; text-align:center;
       display:none; box-shadow:0 6px 20px rgba(0,0,0,.3);
     }
-    .img-result.scanning { display:block; color:#555;  border:2px solid #facc15; }
+    .img-result.scanning { display:block; color:#555; border:2px solid #facc15; }
     .img-result.valid    { display:block; color:#166534; border:2px solid #4ade80; background:#f0fdf4; }
     .img-result.invalid  { display:block; color:#991b1b; border:2px solid #f87171; background:#fef2f2; }
 
-    /* ── Bottom-sheet popup ── */
+    /* ---- Bottom-sheet ---- */
     .popup-backdrop {
       position:absolute; top:0; left:0; width:100%; height:100%;
       background:rgba(0,0,0,.45); z-index:150;
       opacity:0; visibility:hidden; transition:opacity .3s,visibility .3s;
     }
     .popup-backdrop.show { opacity:1; visibility:visible; }
-
     .bottom-sheet {
       position:absolute; bottom:0; left:0; width:100%;
       background:#fff; border-top-left-radius:24px; border-top-right-radius:24px;
@@ -279,7 +334,7 @@
     }
     .btn-sheet-action:active { background:#011e46; }
 
-    /* ── Bottom nav ── */
+    /* ---- Bottom nav ---- */
     .bottom-nav {
       position:absolute; bottom:0; width:100%;
       background:#fff; border-top:1px solid #eaeaea;
@@ -299,77 +354,15 @@
     .nav-item.active { color:#023474; font-weight:600; }
     .nav-item.active .nav-icon-box { background:#e2eafc; }
     .nav-item.active svg { stroke:#023474 !important; }
-
-
-
-
-
-
-
-    /* ========== PATCH KAMERA ========== */
-    /* Reset total untuk #qr-reader */
-    #qr-reader {
-    position: absolute !important;
-    inset: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    overflow: hidden !important;
-    background: #000 !important;
-    z-index: 1 !important;
-    }
-
-    /* Pastikan video tampil penuh */
-    #qr-reader video,
-    #qr-reader .qr-reader__video video {
-    position: absolute !important;
-    top: 50% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) !important;
-    min-width: 100% !important;
-    min-height: 100% !important;
-    width: auto !important;
-    height: auto !important;
-    object-fit: cover !important;
-    display: block !important;
-    background: #000 !important;
-    }
-
-    /* Sembunyikan semua elemen lain di dalam #qr-reader, kecuali video */
-    #qr-reader > *:not(video):not(.qr-reader__video) {
-    display: none !important;
-    }
-
-    /* Paksa semua child tetap terlihat (kecuali yang sudah disembunyikan) */
-    #qr-reader * {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    }
-
-    /* Namun sembunyikan dashboard dan kontrol */
-    #qr-reader .qr-reader__dashboard,
-    #qr-reader .qr-reader__dashboard_section,
-    #qr-reader .qr-reader__dashboard_section_csr,
-    #qr-reader .qr-reader__dashboard_section_fsr,
-    #qr-reader .qr-reader__dashboard_section_swaplink,
-    #qr-reader .qr-reader__filescan_input,
-    #qr-reader .qr-reader__camera_permission_button,
-    #qr-reader button,
-    #qr-reader select {
-    display: none !important;
-    }
-
-
   </style>
 </head>
 <body>
 <div class="app-container">
 
-  <!-- Wrapper kamera yang ketat — overflow:hidden mencegah video bocor -->
+  <!-- Wrapper kamera -->
   <div id="camera-wrapper">
     <div id="qr-reader"></div>
   </div>
-  <!-- Dummy container untuk instance scanFile saat kamera belum ready -->
   <div id="qr-reader-img-dummy" style="display:none;"></div>
 
   <div class="camera-overlay"></div>
@@ -406,10 +399,17 @@
     </div>
   </div>
 
+  <!-- Zoom Slider -->
+  <div class="zoom-controls" id="zoom-controls">
+    <label class="zoom-icon">🔍</label>
+    <input type="range" id="zoom-slider" min="1" max="4" step="0.1" value="1" disabled>
+    <span class="zoom-value" id="zoom-value">1.0x</span>
+  </div>
+
   <!-- Hasil tes gambar -->
   <div class="img-result" id="img-test-result"></div>
 
-  <!-- FAB kanan -->
+  <!-- FAB -->
   <div class="side-fabs">
     <button class="fab" onclick="App.go('daftar.html')" title="Daftar gedung">
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round">
@@ -429,7 +429,7 @@
     <div class="fab-hint">Tes<br>Gambar</div>
   </div>
 
-  <!-- Tombol Lihat Info -->
+  <!-- Tombol Info -->
   <div class="bottom-action-container">
     <button class="btn-info" id="btn-trigger">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -442,7 +442,7 @@
     </button>
   </div>
 
-  <!-- Backdrop + bottom-sheet -->
+  <!-- Bottom-sheet -->
   <div class="popup-backdrop" id="popup-backdrop"></div>
   <div class="bottom-sheet" id="bottom-sheet">
     <div class="sheet-handle" id="sheet-handle"></div>
@@ -499,7 +499,7 @@
     </a>
   </nav>
 
-</div><!-- end .app-container -->
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="js/data.js"></script>
@@ -521,7 +521,7 @@
     document.getElementById("btn-trigger").addEventListener("click", showCurrent);
     document.getElementById("label-trigger").addEventListener("click", showCurrent);
 
-    /* Tutup hasil tes gambar saat tap di luar */
+    // Tutup hasil tes gambar
     document.querySelector(".app-container").addEventListener("click", function(e) {
       var res = document.getElementById("img-test-result");
       var inp = document.getElementById("img-file-input");

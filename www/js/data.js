@@ -90,7 +90,7 @@ const BUILDINGS = [
   {
     id: "sastra",
     qr: "UNEJ-SASTRA",
-    name: "Fakultas Sastra",
+    name: "Fakultas Ilmu Budaya",
     tag: "Fakultas",
     location: "Kampus Timur, Jember",
     image: "img/sastra.jpg",

@@ -1,8 +1,5 @@
 // =====================================================================
-// UNEJ Heritage AR — SCANNER (PATCHED + FILTER OBS)
-// - Pengecekan izin kamera eksplisit
-// - qrbox dinamis menyesuaikan viewport
-// - FILTER OBS / VIRTUAL CAMERA
+// UNEJ Heritage AR — SCANNER (Dengan Slider Zoom & Filter OBS)
 // =====================================================================
 
 let Scanner = (function () {
@@ -11,10 +8,14 @@ let Scanner = (function () {
   let lastQR        = null;
   let invalidTimeout = null;
   let scannerRunning = false;
-  let selectedCameraId = null; // Simpan ID kamera yang dipilih
+  let selectedCameraId = null;
+  let mediaStream = null;        // Untuk akses track
+  let zoomCapabilities = null;   // Simpan capabilities zoom
+  let currentZoom = 1.0;
 
   const ui = {};
 
+  // Cache DOM
   function cacheUI() {
     ui.label       = document.getElementById("detected-text");
     ui.dot         = document.getElementById("dot-indicator");
@@ -31,8 +32,11 @@ let Scanner = (function () {
     ui.imgInput    = document.getElementById("img-file-input");
     ui.imgResult   = document.getElementById("img-test-result");
     ui.viewfinder  = document.getElementById("viewfinder");
+    ui.zoomSlider  = document.getElementById("zoom-slider");
+    ui.zoomValue   = document.getElementById("zoom-value");
   }
 
+  // Callback QR
   function onScanSuccess(decodedText) {
     if (decodedText === lastQR) return;
     lastQR = decodedText;
@@ -59,14 +63,13 @@ let Scanner = (function () {
     }
   }
 
-  // ========== FUNGSI START DENGAN FILTER OBS ==========
+  // ========== START ==========
   function start() {
     cacheUI();
     setLabel("Mengaktifkan kamera…", "idle");
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       setLabel("❌ Browser tidak support kamera", "invalid");
-      console.error("getUserMedia tidak tersedia");
       return;
     }
 
@@ -78,11 +81,11 @@ let Scanner = (function () {
       .catch(err => {
         console.error("❌ Izin kamera ditolak:", err);
         setLabel("❌ Izin kamera ditolak — klik ikon gembok di URL", "invalid");
-        showToast("⚠️ Izin kamera diperlukan — periksa pengaturan browser", "invalid");
+        showToast("⚠️ Izin kamera diperlukan", "invalid");
       });
   }
 
-  // ========== INISIALISASI SCANNER DENGAN FILTER ==========
+  // ========== INIT SCANNER + SETUP ZOOM ==========
   function initScanner() {
     if (html5QrCode) {
       html5QrCode.stop().catch(() => {});
@@ -99,63 +102,39 @@ let Scanner = (function () {
           return;
         }
 
-        console.log("📷 Daftar semua kamera:");
-        cameras.forEach((c, i) => {
-          console.log(`  ${i}: ${c.label} (id: ${c.id})`);
-        });
-
-        // ========== FILTER OBS / VIRTUAL CAMERA ==========
-        const virtualKeywords = [
-          "obs", "virtual", "manycam", "screen", "display", "capture",
-          "camera", "webcam" // Hati-hati: kamera fisik juga bisa berlabel "Webcam"
-        ];
-
-        // 1. Cari kamera yang TIDAK mengandung kata kunci virtual
+        // Filter OBS / virtual
+        const virtualKeywords = ["obs", "virtual", "manycam", "screen", "display", "capture"];
         let filtered = cameras.filter(cam => {
           const label = cam.label.toLowerCase();
-          // Tolak jika mengandung keyword virtual
           const isVirtual = virtualKeywords.some(kw => label.includes(kw));
-          // Tapi tetap terima jika label mengandung "back" atau "rear" (biasanya kamera fisik)
           const isPhysical = label.includes("back") || label.includes("rear") || label.includes("environment");
           return !isVirtual || isPhysical;
         });
-
-        // 2. Jika hasil filter kosong, ambil semua kamera kecuali OBS saja
         if (filtered.length === 0) {
           filtered = cameras.filter(cam => {
             const label = cam.label.toLowerCase();
             return !label.includes("obs") && !label.includes("virtual");
           });
         }
+        if (filtered.length === 0) filtered = cameras;
 
-        // 3. Jika masih kosong, ambil semua (fallback)
-        if (filtered.length === 0) {
-          filtered = cameras;
-          console.warn("⚠️ Tidak ada kamera setelah filter, menggunakan semua kamera");
-        }
-
-        console.log("📷 Filtered cameras:", filtered.map(c => c.label));
-
-        // Pilih kamera pertama dari hasil filter, atau kamera dengan "back"/"rear"
         let selected = filtered.find(c =>
           /back|rear|environment/i.test(c.label)
         ) || filtered[0];
 
-        // Jika masih OBS (karena fallback), paksa pilih kamera terakhir (biasanya webcam fisik)
         if (selected && selected.label.toLowerCase().includes("obs")) {
-          selected = cameras[cameras.length - 1]; // Ambil kamera terakhir (biasanya webcam)
-          console.warn("⚠️ OBS terdeteksi, paksa pilih kamera terakhir:", selected.label);
+          selected = cameras[cameras.length - 1];
         }
 
         selectedCameraId = selected.id;
         console.log("✅ Kamera dipilih:", selected.label);
 
-        // Hitung ukuran qrbox
         const container = document.getElementById("qr-reader");
         const rect = container.getBoundingClientRect();
         const viewportSize = Math.min(rect.width, rect.height);
         const qrSize = Math.min(Math.max(200, viewportSize * 0.7), 350);
 
+        // Mulai scanner
         html5QrCode.start(
           selectedCameraId,
           {
@@ -164,12 +143,26 @@ let Scanner = (function () {
             aspectRatio: 1.333,
           },
           onScanSuccess,
-          (err) => { /* abaikan error per-frame */ }
+          (err) => {}
         )
         .then(() => {
           scannerRunning = true;
           setLabel("Arahkan ke QR gedung…", "idle");
-          console.log("✅ Kamera berhasil menyala dengan ID:", selectedCameraId);
+          console.log("✅ Kamera berhasil menyala");
+
+          // ---- Ambil stream untuk zoom ----
+          const videoElement = document.querySelector("#qr-reader video");
+          if (videoElement && videoElement.srcObject) {
+            mediaStream = videoElement.srcObject;
+            setupZoomControls(mediaStream);
+          } else {
+            // Fallback: coba ambil dari html5QrCode
+            const stream = html5QrCode.getMediaStream();
+            if (stream) {
+              mediaStream = stream;
+              setupZoomControls(stream);
+            }
+          }
         })
         .catch(err => {
           console.error("❌ Gagal start kamera:", err);
@@ -182,11 +175,83 @@ let Scanner = (function () {
       });
   }
 
-  // ========== FUNGSI STOP ==========
+  // ========== SETUP ZOOM CONTROLS ==========
+  function setupZoomControls(stream) {
+    const videoTrack = stream.getVideoTracks()[0];
+    if (!videoTrack) {
+      console.warn("Tidak ada video track untuk zoom");
+      return;
+    }
+
+    const capabilities = videoTrack.getCapabilities ? videoTrack.getCapabilities() : {};
+    if (capabilities.zoom) {
+      zoomCapabilities = capabilities.zoom;
+      const min = zoomCapabilities.min || 1;
+      const max = zoomCapabilities.max || 4;
+      const step = zoomCapabilities.step || 0.1;
+      currentZoom = Math.min(Math.max(1, min), max);
+
+      // Set slider
+      if (ui.zoomSlider) {
+        ui.zoomSlider.min = min;
+        ui.zoomSlider.max = max;
+        ui.zoomSlider.step = step;
+        ui.zoomSlider.value = currentZoom;
+        ui.zoomSlider.disabled = false;
+        updateZoomDisplay(currentZoom);
+
+        ui.zoomSlider.addEventListener("input", function () {
+          const val = parseFloat(this.value);
+          applyZoom(val);
+        });
+      }
+      console.log("✅ Zoom capabilities:", zoomCapabilities);
+    } else {
+      console.warn("❌ Zoom tidak didukung oleh kamera ini");
+      if (ui.zoomSlider) {
+        ui.zoomSlider.disabled = true;
+        ui.zoomValue.textContent = "Tidak support";
+      }
+    }
+  }
+
+  // ========== APPLY ZOOM ==========
+  function applyZoom(value) {
+    if (!mediaStream) return;
+    const videoTrack = mediaStream.getVideoTracks()[0];
+    if (!videoTrack) return;
+
+    // Batasi nilai
+    const clamped = Math.min(Math.max(value, zoomCapabilities?.min || 1), zoomCapabilities?.max || 4);
+    currentZoom = clamped;
+
+    videoTrack.applyConstraints({
+      advanced: [{ zoom: clamped }]
+    })
+    .then(() => {
+      updateZoomDisplay(clamped);
+      console.log("Zoom applied:", clamped);
+    })
+    .catch(err => {
+      console.error("Gagal apply zoom:", err);
+    });
+  }
+
+  function updateZoomDisplay(val) {
+    if (ui.zoomValue) {
+      ui.zoomValue.textContent = val.toFixed(1) + "x";
+    }
+  }
+
+  // ========== STOP ==========
   function stop() {
     if (html5QrCode && scannerRunning) {
       html5QrCode.stop().catch(() => {});
       scannerRunning = false;
+    }
+    if (mediaStream) {
+      mediaStream.getTracks().forEach(t => t.stop());
+      mediaStream = null;
     }
   }
 
@@ -201,7 +266,7 @@ let Scanner = (function () {
 
     const scanner = html5QrCode || new Html5Qrcode("qr-reader-img-dummy");
 
-    scanner.scanFile(file, /* showImage= */ false)
+    scanner.scanFile(file, false)
       .then(decodedText => {
         const b = DB.byQR(decodedText);
         if (b) {
@@ -229,7 +294,7 @@ let Scanner = (function () {
     e.target.value = "";
   }
 
-  // ========== UI HELPER ==========
+  // ========== UI HELPERS ==========
   function showToast(msg, state) {
     if (!ui.toast) return;
     ui.toastMsg.textContent = msg;
@@ -278,13 +343,14 @@ let Scanner = (function () {
     setLabel("Arahkan ke QR gedung…", "idle");
   }
 
-  // ========== PUBLIC API ==========
+  // ========== PUBLIC ==========
   return {
     start,
     stop,
     openSheet,
     closeSheet,
     getCurrent: () => currentBuilding,
-    getSelectedCamera: () => selectedCameraId // Untuk debug
+    applyZoom,
+    getZoom: () => currentZoom
   };
 })();
