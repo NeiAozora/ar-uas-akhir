@@ -1,15 +1,7 @@
-// =====================================================================
-// UNEJ Heritage AR — SCANNER (Slider 0.25 - 4.0)
-// - Soft zoom dengan CSS transform
-// - Slider min 0.25 (25%) sampai 4.0 (400%)
-// - Default 1.0 (100%)
-// - Hardware zoom fallback ke soft zoom
-// =====================================================================
-
 let Scanner = (function () {
-  let html5QrCode   = null;
+  let html5QrCode = null;
   let currentBuilding = null;
-  let lastQR        = null;
+  let lastQR = null;
   let invalidTimeout = null;
   let scannerRunning = false;
 
@@ -21,14 +13,12 @@ let Scanner = (function () {
   let currentZoom = 1.0;
   let videoElement = null;
 
-  // ---- SLIDER RENTANG BARU ----
-  const ZOOM_MIN = 0.25;   // 25% (diperkecil)
-  const ZOOM_MAX = 4.0;    // 400% (diperbesar)
+  const ZOOM_MIN = 0.25;
+  const ZOOM_MAX = 4.0;
   const ZOOM_STEP = 0.05;
 
   const ui = {};
 
-  // ---------- DETEKSI MOBILE ----------
   function isMobile() {
     const width = window.innerWidth;
     const ua = navigator.userAgent || navigator.vendor || window.opera;
@@ -36,30 +26,28 @@ let Scanner = (function () {
     return (width <= 768) || mobileKeywords.test(ua);
   }
 
-  // ---------- CACHE UI ----------
   function cacheUI() {
-    ui.label       = document.getElementById("detected-text");
-    ui.dot         = document.getElementById("dot-indicator");
-    ui.sheet       = document.getElementById("bottom-sheet");
-    ui.backdrop    = document.getElementById("popup-backdrop");
-    ui.sheetTag    = document.getElementById("sheet-tag");
-    ui.sheetTitle  = document.getElementById("sheet-title");
-    ui.sheetImg    = document.getElementById("sheet-thumb");
-    ui.sheetDesc   = document.getElementById("sheet-desc");
-    ui.sheetBtn    = document.getElementById("sheet-action");
-    ui.toast       = document.getElementById("scan-toast");
-    ui.toastMsg    = document.getElementById("toast-msg");
-    ui.imgInput    = document.getElementById("img-file-input");
-    ui.imgResult   = document.getElementById("img-test-result");
-    ui.viewfinder  = document.getElementById("viewfinder");
-    ui.zoomSlider  = document.getElementById("zoom-slider");
-    ui.zoomValue   = document.getElementById("zoom-value");
+    ui.label = document.getElementById("detected-text");
+    ui.dot = document.getElementById("dot-indicator");
+    ui.sheet = document.getElementById("bottom-sheet");
+    ui.backdrop = document.getElementById("popup-backdrop");
+    ui.sheetTag = document.getElementById("sheet-tag");
+    ui.sheetTitle = document.getElementById("sheet-title");
+    ui.sheetImg = document.getElementById("sheet-thumb");
+    ui.sheetDesc = document.getElementById("sheet-desc");
+    ui.sheetBtn = document.getElementById("sheet-action");
+    ui.toast = document.getElementById("scan-toast");
+    ui.toastMsg = document.getElementById("toast-msg");
+    ui.imgInput = document.getElementById("img-file-input");
+    ui.imgResult = document.getElementById("img-test-result");
+    ui.viewfinder = document.getElementById("viewfinder");
+    ui.zoomSlider = document.getElementById("zoom-slider");
+    ui.zoomValue = document.getElementById("zoom-value");
     ui.zoomControls = document.getElementById("zoom-controls");
-    ui.debugModal  = document.getElementById("debug-modal");
+    ui.debugModal = document.getElementById("debug-modal");
     ui.debugContent = document.getElementById("debug-content");
   }
 
-  // ---------- TOAST / LABEL ----------
   function showToast(msg, state) {
     if (!ui.toast) return;
     ui.toastMsg.textContent = msg;
@@ -75,7 +63,7 @@ let Scanner = (function () {
     if (ui.dot) {
       const colors = { ok: "#4ade80", invalid: "#f87171", idle: "#facc15" };
       ui.dot.style.background = colors[state] || "#facc15";
-      ui.dot.style.boxShadow  = "0 0 8px " + (colors[state] || "#facc15");
+      ui.dot.style.boxShadow = "0 0 8px " + (colors[state] || "#facc15");
     }
   }
 
@@ -87,7 +75,6 @@ let Scanner = (function () {
     setTimeout(() => ui.viewfinder.classList.remove("pulse-ok", "pulse-invalid"), 900);
   }
 
-  // ---------- DEBUG POPUP ----------
   function showDebugLog(error, extra) {
     if (!ui.debugModal) return;
     let content = "🚨 ERROR START VIDEO\n\n";
@@ -98,7 +85,6 @@ let Scanner = (function () {
     ui.debugModal.classList.add("show");
   }
 
-  // ---------- QR CALLBACK ----------
   function onScanSuccess(decodedText) {
     if (decodedText === lastQR) return;
     lastQR = decodedText;
@@ -125,7 +111,6 @@ let Scanner = (function () {
     }
   }
 
-  // ---------- START ----------
   function start() {
     cacheUI();
     setLabel("Mengaktifkan kamera…", "idle");
@@ -198,7 +183,6 @@ let Scanner = (function () {
       });
   }
 
-  // ---------- STOP ----------
   function stopCamera() {
     if (html5QrCode && scannerRunning) {
       html5QrCode.stop().catch(() => {});
@@ -212,7 +196,6 @@ let Scanner = (function () {
     if (ui.zoomControls) ui.zoomControls.style.display = "none";
   }
 
-  // ---------- START KAMERA ----------
   function startCamera(cameraId) {
     stopCamera();
 
@@ -228,8 +211,7 @@ let Scanner = (function () {
     setLabel("Memulai kamera…", "idle");
 
     html5QrCode.start(
-      cameraId,
-      {
+      cameraId, {
         fps: 12,
         qrbox: { width: qrSize, height: qrSize },
         aspectRatio: 1.333,
@@ -252,7 +234,7 @@ let Scanner = (function () {
             currentStream = html5QrCode.getMediaStream();
             setupZoom(currentStream);
           }
-        } catch(e) {}
+        } catch (e) {}
       }
     })
     .catch(err => {
@@ -262,7 +244,6 @@ let Scanner = (function () {
     });
   }
 
-  // ---------- SWITCH KAMERA ----------
   function switchCamera() {
     if (!cameraList || cameraList.length < 2) {
       showToast("Hanya ada 1 kamera", "invalid");
@@ -274,18 +255,15 @@ let Scanner = (function () {
     startCamera(cam.id);
   }
 
-  // ========== ZOOM (Slider 0.25 - 4.0) ==========
   function setupZoom(stream) {
     if (!ui.zoomControls) return;
     const videoTrack = stream.getVideoTracks()[0];
 
-    // Cek apakah hardware zoom support
     if (videoTrack) {
       const capabilities = videoTrack.getCapabilities ? videoTrack.getCapabilities() : {};
       if (capabilities.zoom) {
         zoomCapabilities = capabilities.zoom;
         useSoftZoom = false;
-        // Gunakan min/max dari hardware jika tersedia, tapi tetap batasi ke 0.25 - 4.0
         const min = Math.max(ZOOM_MIN, zoomCapabilities.min || ZOOM_MIN);
         const max = Math.min(ZOOM_MAX, zoomCapabilities.max || ZOOM_MAX);
         const step = zoomCapabilities.step || ZOOM_STEP;
@@ -295,7 +273,6 @@ let Scanner = (function () {
       }
     }
 
-    // Fallback: soft zoom
     useSoftZoom = true;
     initZoomSlider(ZOOM_MIN, ZOOM_MAX, ZOOM_STEP);
     console.log("⚠️ Zoom hardware tidak support, pakai soft zoom (CSS)");
@@ -307,7 +284,7 @@ let Scanner = (function () {
     ui.zoomSlider.min = min;
     ui.zoomSlider.max = max;
     ui.zoomSlider.step = step;
-    ui.zoomSlider.value = 1.0; // default 100%
+    ui.zoomSlider.value = 1.0;
     ui.zoomSlider.disabled = false;
     updateZoomDisplay(1.0);
 
@@ -318,7 +295,6 @@ let Scanner = (function () {
       applyZoom(val);
     };
 
-    // Terapkan zoom awal
     applyZoom(1.0);
   }
 
@@ -329,16 +305,13 @@ let Scanner = (function () {
     currentZoom = clamped;
 
     if (useSoftZoom) {
-      // Soft zoom pakai CSS transform scale
       if (videoElement) {
         const scale = clamped;
-        // Gabungkan dengan translate yang sudah ada di CSS
-        videoElement.style.transform = `translate(-50%, -50%) scale(${scale})`;
-        videoElement.style.transformOrigin = 'center center';
+        videoElement.style.transform = "translate(-50%, -50%) scale(" + scale + ")";
+        videoElement.style.transformOrigin = "center center";
       }
       updateZoomDisplay(clamped);
     } else {
-      // Hardware zoom
       if (!currentStream) return;
       const videoTrack = currentStream.getVideoTracks()[0];
       if (!videoTrack) return;
@@ -350,7 +323,6 @@ let Scanner = (function () {
       })
       .catch(err => {
         console.error("Gagal apply hardware zoom:", err);
-        // Fallback ke soft zoom
         useSoftZoom = true;
         applyZoom(clamped);
       });
@@ -364,13 +336,12 @@ let Scanner = (function () {
     }
   }
 
-  // ---------- BOTTOM SHEET ----------
   function fillSheet(b) {
-    ui.sheetTag.textContent   = b.tag;
+    ui.sheetTag.textContent = b.tag;
     ui.sheetTitle.textContent = b.name;
-    ui.sheetImg.src           = b.image;
-    ui.sheetDesc.textContent  = b.short + " " + b.history.slice(0, 90) + "…";
-    ui.sheetBtn.onclick       = () => App.goDetail(b.id);
+    ui.sheetImg.src = b.image;
+    ui.sheetDesc.textContent = b.short + " " + b.history.slice(0, 90) + "…";
+    ui.sheetBtn.onclick = () => App.goDetail(b.id);
   }
 
   function openSheet() {
@@ -386,7 +357,6 @@ let Scanner = (function () {
     setLabel("Arahkan ke QR gedung…", "idle");
   }
 
-  // ---------- UPLOAD GAMBAR ----------
   function onImageFileSelected(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -425,21 +395,19 @@ let Scanner = (function () {
     e.target.value = "";
   }
 
-  // ========== PUBLIC API ==========
   return {
-    start,
+    start: start,
     stop: stopCamera,
-    openSheet,
-    closeSheet,
-    getCurrent: () => currentBuilding,
-    switchCamera,
-    onImageFileSelected,
+    openSheet: openSheet,
+    closeSheet: closeSheet,
+    getCurrent: function() { return currentBuilding; },
+    switchCamera: switchCamera,
+    onImageFileSelected: onImageFileSelected
   };
 })();
 
-// ---------- EVENT UPLOAD ----------
 document.addEventListener("DOMContentLoaded", function() {
-  const input = document.getElementById("img-file-input");
+  var input = document.getElementById("img-file-input");
   if (input) {
     input.addEventListener("change", function(e) {
       Scanner.onImageFileSelected(e);

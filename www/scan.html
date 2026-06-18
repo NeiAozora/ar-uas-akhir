@@ -5,541 +5,854 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Pindai AR - UNEJ Heritage</title>
   <style>
-    /* Reset & Base */
-    * { margin:0; padding:0; box-sizing:border-box; font-family: sans-serif; }
-    body { background:#000; display:flex; justify-content:center; overflow:hidden; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: sans-serif;
+    }
+    body {
+      background: #000;
+      display: flex;
+      justify-content: center;
+      overflow: hidden;
+    }
     .app-container {
-      width:100%; max-width:480px; height:100vh; background:#000;
-      position:relative; overflow:hidden;
+      width: 100%;
+      max-width: 480px;
+      height: 100vh;
+      background: #000;
+      position: relative;
+      overflow: hidden;
     }
 
-    /* Kamera wrapper */
     #camera-wrapper {
-      position:absolute; top:0; left:0; width:100%; height:100%;
-      overflow:hidden; z-index:1; background:#000;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      z-index: 1;
+      background: #000;
     }
     #qr-reader {
-      position:absolute !important; inset:0 !important;
-      width:100% !important; height:100% !important;
-      overflow:hidden !important; background:#000;
+      position: absolute !important;
+      inset: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      overflow: hidden !important;
+      background: #000;
     }
-    /* Video diatur agar tetap di tengah, dengan scale yang dikontrol JS */
     #qr-reader video {
-      position:absolute !important;
-      top:50% !important; left:50% !important;
-      transform:translate(-50%, -50%) !important;
-      min-width:100% !important;
-      min-height:100% !important;
-      width:auto !important;
-      height:auto !important;
-      object-fit:cover !important;
-      display:block !important;
+      position: absolute !important;
+      top: 50% !important;
+      left: 50% !important;
+      transform: translate(-50%, -50%) !important;
+      min-width: 100% !important;
+      min-height: 100% !important;
+      width: auto !important;
+      height: auto !important;
+      object-fit: cover !important;
+      display: block !important;
       transition: transform 0.15s ease-out;
     }
-    /* Sembunyikan dashboard */
-    #qr-reader > *:not(video):not(.qr-reader__video) { display:none !important; }
+    #qr-reader > *:not(video):not(.qr-reader__video) {
+      display: none !important;
+    }
     #qr-reader .qr-reader__dashboard,
     #qr-reader button,
-    #qr-reader select { display:none !important; }
+    #qr-reader select {
+      display: none !important;
+    }
 
-    /* Overlay */
     .camera-overlay {
-      position:absolute; inset:0;
-      background:linear-gradient(to bottom, rgba(0,0,0,.4) 0%, transparent 22%, transparent 78%, rgba(0,0,0,.55) 100%);
-      z-index:2; pointer-events:none;
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(0, 0, 0, 0.4) 0%, transparent 22%, transparent 78%, rgba(0, 0, 0, 0.55) 100%);
+      z-index: 2;
+      pointer-events: none;
     }
 
-    /* Header */
     .top-header {
-      position:absolute; top:0; left:0; width:100%;
-      display:flex; justify-content:space-between; align-items:center;
-      padding:16px 20px; z-index:10;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      z-index: 10;
     }
-    .header-left { display:flex; align-items:center; gap:10px; }
-    .header-left h1 { font-size:18px; font-weight:700; color:#fff; text-shadow:0 1px 4px rgba(0,0,0,.6); }
-    .bell-icon { color:#fff; }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header-left h1 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+    }
+    .bell-icon {
+      color: #fff;
+    }
 
-    /* Toast */
     .scan-toast {
-      position:absolute; top:76px; left:50%; transform:translateX(-50%);
-      background:rgba(20,20,20,.93); color:#fff;
-      padding:10px 22px; border-radius:24px; font-size:14px; font-weight:600;
-      z-index:20; white-space:nowrap; opacity:0; transition:opacity .25s;
-      backdrop-filter:blur(8px); border:1.5px solid rgba(255,255,255,.12);
-      max-width:90vw; overflow:hidden; text-overflow:ellipsis;
-      pointer-events:none;
+      position: absolute;
+      top: 76px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(20, 20, 20, 0.93);
+      color: #fff;
+      padding: 10px 22px;
+      border-radius: 24px;
+      font-size: 14px;
+      font-weight: 600;
+      z-index: 20;
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.25s;
+      backdrop-filter: blur(8px);
+      border: 1.5px solid rgba(255, 255, 255, 0.12);
+      max-width: 90vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      pointer-events: none;
     }
-    .scan-toast.show { opacity:1; }
-    .scan-toast.ok { border-color:#4ade80; }
-    .scan-toast.invalid { border-color:#f87171; }
+    .scan-toast.show {
+      opacity: 1;
+    }
+    .scan-toast.ok {
+      border-color: #4ade80;
+    }
+    .scan-toast.invalid {
+      border-color: #f87171;
+    }
 
-    /* Viewfinder */
     .scanner-ui {
-      position:absolute; inset:0; z-index:5;
-      display:flex; flex-direction:column;
-      justify-content:center; align-items:center; pointer-events:none;
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      pointer-events: none;
     }
     .viewfinder {
-      width:260px; height:260px;
-      border:2px solid rgba(255,255,255,.75);
-      border-radius:20px; position:relative;
-      box-shadow:0 0 0 9999px rgba(0,0,0,.30);
-      transition:border-color .2s;
+      width: 260px;
+      height: 260px;
+      border: 2px solid rgba(255, 255, 255, 0.75);
+      border-radius: 20px;
+      position: relative;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.30);
+      transition: border-color 0.2s;
     }
-    .viewfinder::before,.viewfinder::after,
-    .corner-br::before,.corner-br::after {
-      content:''; position:absolute; width:24px; height:24px;
-      border-color:#F4D03F; border-style:solid;
+    .viewfinder::before,
+    .viewfinder::after,
+    .corner-br::before,
+    .corner-br::after {
+      content: '';
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      border-color: #F4D03F;
+      border-style: solid;
     }
-    .viewfinder::before { top:-2px; left:-2px; border-width:3px 0 0 3px; border-radius:20px 0 0 0; }
-    .viewfinder::after  { top:-2px; right:-2px; border-width:3px 3px 0 0; border-radius:0 20px 0 0; }
-    .corner-br { position:absolute; inset:0; }
-    .corner-br::before  { bottom:-2px; left:-2px; border-width:0 0 3px 3px; border-radius:0 0 0 20px; }
-    .corner-br::after   { bottom:-2px; right:-2px; border-width:0 3px 3px 0; border-radius:0 0 20px 0; }
+    .viewfinder::before {
+      top: -2px;
+      left: -2px;
+      border-width: 3px 0 0 3px;
+      border-radius: 20px 0 0 0;
+    }
+    .viewfinder::after {
+      top: -2px;
+      right: -2px;
+      border-width: 3px 3px 0 0;
+      border-radius: 0 20px 0 0;
+    }
+    .corner-br {
+      position: absolute;
+      inset: 0;
+    }
+    .corner-br::before {
+      bottom: -2px;
+      left: -2px;
+      border-width: 0 0 3px 3px;
+      border-radius: 0 0 0 20px;
+    }
+    .corner-br::after {
+      bottom: -2px;
+      right: -2px;
+      border-width: 0 3px 3px 0;
+      border-radius: 0 0 20px 0;
+    }
 
     @keyframes pulseGreen {
-      0%   { box-shadow:0 0 0 9999px rgba(0,0,0,.30), 0 0 0 0 rgba(74,222,128,.7); }
-      70%  { box-shadow:0 0 0 9999px rgba(0,0,0,.30), 0 0 0 22px rgba(74,222,128,0); }
-      100% { box-shadow:0 0 0 9999px rgba(0,0,0,.30), 0 0 0 0 rgba(74,222,128,0); }
+      0% {
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.30), 0 0 0 0 rgba(74, 222, 128, 0.7);
+      }
+      70% {
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.30), 0 0 0 22px rgba(74, 222, 128, 0);
+      }
+      100% {
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.30), 0 0 0 0 rgba(74, 222, 128, 0);
+      }
     }
     @keyframes pulseRed {
-      0%   { box-shadow:0 0 0 9999px rgba(0,0,0,.30), 0 0 0 0 rgba(248,113,113,.7); }
-      70%  { box-shadow:0 0 0 9999px rgba(0,0,0,.30), 0 0 0 22px rgba(248,113,113,0); }
-      100% { box-shadow:0 0 0 9999px rgba(0,0,0,.30), 0 0 0 0 rgba(248,113,113,0); }
+      0% {
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.30), 0 0 0 0 rgba(248, 113, 113, 0.7);
+      }
+      70% {
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.30), 0 0 0 22px rgba(248, 113, 113, 0);
+      }
+      100% {
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.30), 0 0 0 0 rgba(248, 113, 113, 0);
+      }
     }
-    .viewfinder.pulse-ok      { border-color:#4ade80; animation:pulseGreen .75s ease-out; }
-    .viewfinder.pulse-invalid { border-color:#f87171; animation:pulseRed .75s ease-out; }
+    .viewfinder.pulse-ok {
+      border-color: #4ade80;
+      animation: pulseGreen 0.75s ease-out;
+    }
+    .viewfinder.pulse-invalid {
+      border-color: #f87171;
+      animation: pulseRed 0.75s ease-out;
+    }
 
     @keyframes scanLine {
-      0%,100% { top:8%; opacity:.9; }
-      50%      { top:86%; opacity:.9; }
+      0%,
+      100% {
+        top: 8%;
+        opacity: 0.9;
+      }
+      50% {
+        top: 86%;
+        opacity: 0.9;
+      }
     }
     .scan-line {
-      position:absolute; left:8px; right:8px; height:2px;
-      background:linear-gradient(90deg, transparent 0%, #F4D03F 50%, transparent 100%);
-      border-radius:2px; animation:scanLine 2.2s ease-in-out infinite;
+      position: absolute;
+      left: 8px;
+      right: 8px;
+      height: 2px;
+      background: linear-gradient(90deg, transparent 0%, #F4D03F 50%, transparent 100%);
+      border-radius: 2px;
+      animation: scanLine 2.2s ease-in-out infinite;
     }
 
     .detected-label {
-      position:absolute; bottom:-54px; left:50%; transform:translateX(-50%);
-      background:#023474; color:#fff; padding:10px 18px;
-      border-radius:24px; font-size:13px; font-weight:600;
-      display:flex; align-items:center; gap:8px;
-      pointer-events:auto; border:2px solid rgba(255,255,255,.2);
-      z-index:6; cursor:pointer;
-      box-shadow:0 4px 14px rgba(0,0,0,.4);
-      max-width:270px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+      position: absolute;
+      bottom: -54px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #023474;
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 24px;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: auto;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      z-index: 6;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+      max-width: 270px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
     }
     .dot-indicator {
-      width:9px; height:9px; background:#facc15;
-      border-radius:50%; flex-shrink:0;
-      box-shadow:0 0 8px #facc15;
-      transition:background .3s, box-shadow .3s;
+      width: 9px;
+      height: 9px;
+      background: #facc15;
+      border-radius: 50%;
+      flex-shrink: 0;
+      box-shadow: 0 0 8px #facc15;
+      transition: background 0.3s, box-shadow 0.3s;
     }
 
-    /* ===== SLIDER ZOOM VERTIKAL DI KIRI ===== */
     .zoom-controls {
-      position:absolute; left:12px; top:50%; transform:translateY(-50%);
-      z-index:8; display:flex; flex-direction:column;
-      align-items:center; gap:6px;
-      background:rgba(0,0,0,.5);
-      backdrop-filter:blur(4px);
-      border-radius:30px;
-      padding:14px 6px;
-      border:1px solid rgba(255,255,255,.15);
-      pointer-events:auto;
-      min-width:44px;
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 8;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      border-radius: 30px;
+      padding: 14px 6px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      pointer-events: auto;
     }
-    .zoom-controls .zoom-label {
-      color:#fff; font-size:10px; font-weight:600;
-      writing-mode:vertical-lr;
-      letter-spacing:2px;
+    .zoom-controls .zoom-icon {
+      color: #facc15;
+      font-size: 14px;
     }
     .zoom-controls input[type="range"] {
       -webkit-appearance: slider-vertical;
       appearance: slider-vertical;
-      width:100px; height:4px;
+      width: 120px;
+      height: 4px;
       writing-mode: bt-lr;
-      background:linear-gradient(to top, #facc15, #f59e0b);
-      outline:none;
-      cursor:pointer;
+      background: linear-gradient(to top, #facc15, #f59e0b);
+      outline: none;
+      cursor: pointer;
     }
     .zoom-controls input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
-      width:18px; height:18px;
-      border-radius:50%;
-      background:#facc15;
-      cursor:pointer;
-      box-shadow:0 0 8px rgba(250,204,21,.6);
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #facc15;
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(250, 204, 21, 0.6);
     }
     .zoom-controls input[type="range"]::-moz-range-thumb {
-      width:18px; height:18px;
-      border-radius:50%;
-      background:#facc15;
-      cursor:pointer;
-      border:none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #facc15;
+      cursor: pointer;
+      border: none;
     }
     .zoom-controls .zoom-value {
-      color:#fff;
-      font-size:11px;
-      font-weight:700;
-      min-width:36px;
-      text-align:center;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      min-width: 36px;
+      text-align: center;
     }
-    .zoom-controls .zoom-icon {
-      color:#facc15;
-      font-size:14px;
+    .zoom-controls .zoom-label {
+      color: #fff;
+      font-size: 9px;
+      font-weight: 600;
+      writing-mode: vertical-lr;
+      letter-spacing: 2px;
     }
 
-    /* Tombol ganti kamera di KANAN */
     .btn-switch-cam {
-      position:absolute; right:16px; top:50%; transform:translateY(-50%);
-      z-index:8;
-      background:rgba(0,0,0,.5);
-      backdrop-filter:blur(4px);
-      border:1px solid rgba(255,255,255,.2);
-      border-radius:50%;
-      width:44px; height:44px;
-      display:flex; align-items:center; justify-content:center;
-      color:#fff; font-size:20px;
-      cursor:pointer; pointer-events:auto;
+      position: absolute;
+      right: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 8;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 20px;
+      cursor: pointer;
+      pointer-events: auto;
     }
-    .btn-switch-cam:active { background:rgba(255,255,255,.2); }
+    .btn-switch-cam:active {
+      background: rgba(255, 255, 255, 0.2);
+    }
 
-    /* FAB kanan bawah (upload) */
     .side-fabs {
-      position:absolute; bottom:100px; right:16px;
-      display:flex; flex-direction:column; gap:12px; z-index:7;
+      position: absolute;
+      bottom: 100px;
+      right: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      z-index: 7;
     }
     .fab {
-      width:46px; height:46px; background:#fff; border-radius:50%;
-      display:flex; justify-content:center; align-items:center;
-      box-shadow:0 4px 12px rgba(0,0,0,.3); cursor:pointer; border:none;
+      width: 46px;
+      height: 46px;
+      background: #fff;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      cursor: pointer;
+      border: none;
     }
-    .fab-upload { background:#023474 !important; }
+    .fab-upload {
+      background: #023474 !important;
+    }
     .fab-upload label {
-      display:flex; align-items:center; justify-content:center;
-      width:100%; height:100%; cursor:pointer; border-radius:50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+      border-radius: 50%;
     }
-    #img-file-input { display:none; }
+    #img-file-input {
+      display: none;
+    }
     .fab-hint {
-      color:rgba(255,255,255,.7); font-size:9px; font-weight:600;
-      text-align:center; margin-top:-4px; pointer-events:none;
-      text-shadow:0 1px 3px rgba(0,0,0,.8);
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 9px;
+      font-weight: 600;
+      text-align: center;
+      margin-top: -4px;
+      pointer-events: none;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
     }
 
-    /* Tombol Lihat Info */
     .bottom-action-container {
-      position:absolute; bottom:88px; width:100%;
-      display:flex; justify-content:center; z-index:10; pointer-events:auto;
+      position: absolute;
+      bottom: 88px;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      z-index: 10;
+      pointer-events: auto;
     }
     .btn-info {
-      background:#023474; color:#fff; border:none; padding:14px 32px;
-      border-radius:30px; font-size:16px; font-weight:700;
-      display:flex; align-items:center; gap:10px;
-      box-shadow:0 4px 14px rgba(0,0,0,.35); cursor:pointer;
+      background: #023474;
+      color: #fff;
+      border: none;
+      padding: 14px 32px;
+      border-radius: 30px;
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+      cursor: pointer;
     }
-    .btn-info:active { background:#011e46; }
+    .btn-info:active {
+      background: #011e46;
+    }
 
-    /* Hasil tes gambar */
     .img-result {
-      position:absolute; bottom:200px; left:50%; transform:translateX(-50%);
-      background:rgba(255,255,255,.97); border-radius:14px;
-      padding:12px 18px; font-size:13px; line-height:1.7;
-      z-index:15; width:88%; max-width:320px; text-align:center;
-      display:none; box-shadow:0 6px 20px rgba(0,0,0,.3);
+      position: absolute;
+      bottom: 200px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255, 255, 255, 0.97);
+      border-radius: 14px;
+      padding: 12px 18px;
+      font-size: 13px;
+      line-height: 1.7;
+      z-index: 15;
+      width: 88%;
+      max-width: 320px;
+      text-align: center;
+      display: none;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
     }
-    .img-result.scanning { display:block; color:#555; border:2px solid #facc15; }
-    .img-result.valid    { display:block; color:#166534; border:2px solid #4ade80; background:#f0fdf4; }
-    .img-result.invalid  { display:block; color:#991b1b; border:2px solid #f87171; background:#fef2f2; }
+    .img-result.scanning {
+      display: block;
+      color: #555;
+      border: 2px solid #facc15;
+    }
+    .img-result.valid {
+      display: block;
+      color: #166534;
+      border: 2px solid #4ade80;
+      background: #f0fdf4;
+    }
+    .img-result.invalid {
+      display: block;
+      color: #991b1b;
+      border: 2px solid #f87171;
+      background: #fef2f2;
+    }
 
-    /* Bottom sheet */
     .popup-backdrop {
-      position:absolute; inset:0; background:rgba(0,0,0,.45); z-index:150;
-      opacity:0; visibility:hidden; transition:opacity .3s;
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      z-index: 150;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s;
     }
-    .popup-backdrop.show { opacity:1; visibility:visible; }
+    .popup-backdrop.show {
+      opacity: 1;
+      visibility: visible;
+    }
     .bottom-sheet {
-      position:absolute; bottom:0; left:0; width:100%;
-      background:#fff; border-top-left-radius:24px; border-top-right-radius:24px;
-      padding:20px; z-index:160; box-shadow:0 -4px 20px rgba(0,0,0,.3);
-      transform:translateY(100%); transition:transform .4s cubic-bezier(.25,1,.5,1);
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: #fff;
+      border-top-left-radius: 24px;
+      border-top-right-radius: 24px;
+      padding: 20px;
+      z-index: 160;
+      box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+      transform: translateY(100%);
+      transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
     }
-    .bottom-sheet.open { transform:translateY(0); }
+    .bottom-sheet.open {
+      transform: translateY(0);
+    }
     .sheet-handle {
-      width:40px; height:4px; background:#cbd5e1;
-      border-radius:2px; margin:0 auto 16px; cursor:pointer;
+      width: 40px;
+      height: 4px;
+      background: #cbd5e1;
+      border-radius: 2px;
+      margin: 0 auto 16px;
+      cursor: pointer;
     }
     .sheet-header {
-      display:flex; justify-content:space-between;
-      align-items:flex-start; margin-bottom:16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
     }
     .sheet-title-area .sheet-tag {
-      display:inline-block; background:#e2eafc; color:#023474;
-      font-size:11px; font-weight:700; padding:4px 10px;
-      border-radius:6px; margin-bottom:6px;
+      display: inline-block;
+      background: #e2eafc;
+      color: #023474;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin-bottom: 6px;
     }
-    .sheet-title-area h2 { font-size:20px; font-weight:700; color:#1a202c; }
+    .sheet-title-area h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1a202c;
+    }
     .btn-close-sheet {
-      background:#f1f5f9; border:none; width:32px; height:32px;
-      border-radius:50%; display:flex; justify-content:center; align-items:center;
-      cursor:pointer; color:#64748b; font-size:18px; flex-shrink:0;
+      background: #f1f5f9;
+      border: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      color: #64748b;
+      font-size: 18px;
+      flex-shrink: 0;
     }
-    .sheet-body { display:flex; gap:16px; align-items:center; margin-bottom:20px; }
+    .sheet-body {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 20px;
+    }
     .sheet-thumbnail {
-      width:90px; height:90px; border-radius:12px;
-      object-fit:cover; background:#eaeaea; flex-shrink:0;
+      width: 90px;
+      height: 90px;
+      border-radius: 12px;
+      object-fit: cover;
+      background: #eaeaea;
+      flex-shrink: 0;
     }
-    .sheet-description { flex:1; font-size:13px; line-height:1.5; color:#4a5568; }
+    .sheet-description {
+      flex: 1;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #4a5568;
+    }
     .btn-sheet-action {
-      width:100%; background:#023474; color:#fff; border:none;
-      padding:14px; border-radius:12px; font-size:15px; font-weight:700;
-      cursor:pointer; text-align:center;
+      width: 100%;
+      background: #023474;
+      color: #fff;
+      border: none;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
     }
 
-    /* ===== DEBUG POPUP ===== */
     .debug-modal {
-      position:absolute; inset:0; background:rgba(0,0,0,.7);
-      z-index:200; display:none;
-      justify-content:center; align-items:center;
-      padding:20px;
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 200;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
     }
-    .debug-modal.show { display:flex; }
+    .debug-modal.show {
+      display: flex;
+    }
     .debug-box {
-      background:#1e1e2e; color:#cdd6f4;
-      padding:24px; border-radius:16px;
-      max-width:400px; width:100%;
-      max-height:70vh; overflow:auto;
-      font-family:monospace; font-size:13px;
-      border:1px solid #f9e2af;
-      box-shadow:0 8px 30px rgba(0,0,0,.6);
+      background: #1e1e2e;
+      color: #cdd6f4;
+      padding: 24px;
+      border-radius: 16px;
+      max-width: 400px;
+      width: 100%;
+      max-height: 70vh;
+      overflow: auto;
+      font-family: monospace;
+      font-size: 13px;
+      border: 1px solid #f9e2af;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
     }
     .debug-box h3 {
-      color:#f9e2af; margin-bottom:12px;
-      display:flex; justify-content:space-between;
+      color: #f9e2af;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
     }
     .debug-box pre {
-      white-space:pre-wrap; word-wrap:break-word;
-      background:#11111b; padding:12px; border-radius:8px;
-      margin:8px 0; max-height:300px; overflow-y:auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      background: #11111b;
+      padding: 12px;
+      border-radius: 8px;
+      margin: 8px 0;
+      max-height: 300px;
+      overflow-y: auto;
     }
     .debug-box .btn-close-debug {
-      background:#f9e2af; color:#1e1e2e;
-      border:none; padding:8px 20px; border-radius:8px;
-      font-weight:700; cursor:pointer; margin-top:12px;
+      background: #f9e2af;
+      color: #1e1e2e;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 12px;
     }
 
-    /* Bottom nav */
     .bottom-nav {
-      position:absolute; bottom:0; width:100%;
-      background:#fff; border-top:1px solid #eaeaea;
-      display:flex; justify-content:space-between;
-      padding:10px 20px; padding-bottom:env(safe-area-inset-bottom,10px);
-      z-index:100;
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      background: #fff;
+      border-top: 1px solid #eaeaea;
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 20px;
+      padding-bottom: env(safe-area-inset-bottom, 10px);
+      z-index: 100;
     }
     .nav-item {
-      display:flex; flex-direction:column; align-items:center; gap:4px;
-      text-decoration:none; color:#718096; font-size:11px; font-weight:500;
-      width:60px; cursor:pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      text-decoration: none;
+      color: #718096;
+      font-size: 11px;
+      font-weight: 500;
+      width: 60px;
+      cursor: pointer;
     }
     .nav-icon-box {
-      width:48px; height:32px; display:flex;
-      justify-content:center; align-items:center; border-radius:16px;
+      width: 48px;
+      height: 32px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 16px;
     }
-    .nav-item.active { color:#023474; font-weight:600; }
-    .nav-item.active .nav-icon-box { background:#e2eafc; }
+    .nav-item.active {
+      color: #023474;
+      font-weight: 600;
+    }
+    .nav-item.active .nav-icon-box {
+      background: #e2eafc;
+    }
   </style>
 </head>
 <body>
-<div class="app-container">
+  <div class="app-container">
 
-  <!-- Wrapper kamera -->
-  <div id="camera-wrapper">
-    <div id="qr-reader"></div>
-  </div>
-  <div id="qr-reader-img-dummy" style="display:none;"></div>
-
-  <div class="camera-overlay"></div>
-
-  <!-- Header -->
-  <header class="top-header">
-    <div class="header-left">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="#fff">
-        <path d="M12 2L2 9H22L12 2ZM3 11V20H5V11H3ZM7 11V20H9V11H7ZM11 11V20H13V11H11ZM15 11V20H17V11H15ZM19 11V20H21V11H19ZM2 21V23H22V21H2Z"/>
-      </svg>
-      <h1>UNEJ Heritage AR</h1>
+    <div id="camera-wrapper">
+      <div id="qr-reader"></div>
     </div>
-    <div class="bell-icon">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff">
-        <path d="M12 22C13.1 22 14 21.1 14 20H10C10 21.1 10.9 22 12 22ZM18 16V11C18 7.93 16.36 5.36 13.5 4.68V4C13.5 3.17 12.83 2.5 12 2.5C11.17 2.5 10.5 3.17 10.5 4V4.68C7.63 5.36 6 7.92 6 11V16L4 18V19H20V18L18 16Z"/>
-      </svg>
+    <div id="qr-reader-img-dummy" style="display:none;"></div>
+
+    <div class="camera-overlay"></div>
+
+    <header class="top-header">
+      <div class="header-left">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="#fff">
+          <path d="M12 2L2 9H22L12 2ZM3 11V20H5V11H3ZM7 11V20H9V11H7ZM11 11V20H13V11H11ZM15 11V20H17V11H15ZM19 11V20H21V11H19ZM2 21V23H22V21H2Z"/>
+        </svg>
+        <h1>UNEJ Heritage AR</h1>
+      </div>
+      <div class="bell-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff">
+          <path d="M12 22C13.1 22 14 21.1 14 20H10C10 21.1 10.9 22 12 22ZM18 16V11C18 7.93 16.36 5.36 13.5 4.68V4C13.5 3.17 12.83 2.5 12 2.5C11.17 2.5 10.5 3.17 10.5 4V4.68C7.63 5.36 6 7.92 6 11V16L4 18V19H20V18L18 16Z"/>
+        </svg>
+      </div>
+    </header>
+
+    <div class="scan-toast" id="scan-toast">
+      <span id="toast-msg"></span>
     </div>
-  </header>
 
-  <!-- Toast -->
-  <div class="scan-toast" id="scan-toast">
-    <span id="toast-msg"></span>
-  </div>
-
-  <!-- Viewfinder -->
-  <div class="scanner-ui">
-    <div class="viewfinder" id="viewfinder">
-      <div class="corner-br"></div>
-      <div class="scan-line"></div>
-      <div class="detected-label" id="label-trigger">
-        <div class="dot-indicator" id="dot-indicator"></div>
-        <span id="detected-text">Mengaktifkan kamera…</span>
+    <div class="scanner-ui">
+      <div class="viewfinder" id="viewfinder">
+        <div class="corner-br"></div>
+        <div class="scan-line"></div>
+        <div class="detected-label" id="label-trigger">
+          <div class="dot-indicator" id="dot-indicator"></div>
+          <span id="detected-text">Mengaktifkan kamera…</span>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- Zoom Slider Vertikal di KIRI -->
-  <div class="zoom-controls" id="zoom-controls" style="display:none;">
-    <span class="zoom-icon">🔍</span>
-    <input type="range" id="zoom-slider" min="0.25" max="4.0" step="0.05" value="1.0" orient="vertical">
-    <span class="zoom-value" id="zoom-value">100%</span>
-    <span class="zoom-label">ZOOM</span>
-  </div>
-
-  <!-- Tombol Ganti Kamera di KANAN -->
-  <button class="btn-switch-cam" id="btn-switch-cam" title="Ganti kamera">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M23 4v6h-6M1 20v-6h6"/>
-      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-    </svg>
-  </button>
-
-  <!-- Hasil tes gambar -->
-  <div class="img-result" id="img-test-result"></div>
-
-  <!-- FAB upload -->
-  <div class="side-fabs">
-    <div class="fab fab-upload" title="Tes gambar QR">
-      <label for="img-file-input">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="3" width="18" height="18" rx="2"/>
-          <circle cx="8.5" cy="8.5" r="1.5"/>
-          <polyline points="21 15 16 10 5 21"/>
-        </svg>
-      </label>
-      <input type="file" id="img-file-input" accept="image/*">
+    <div class="zoom-controls" id="zoom-controls">
+      <span class="zoom-icon">🔍</span>
+      <input type="range" id="zoom-slider" min="0.25" max="4.0" step="0.05" value="1.0" orient="vertical">
+      <span class="zoom-value" id="zoom-value">100%</span>
+      <span class="zoom-label">ZOOM</span>
     </div>
-    <div class="fab-hint">Tes<br>Gambar</div>
-  </div>
 
-  <!-- Tombol Info -->
-  <div class="bottom-action-container">
-    <button class="btn-info" id="btn-trigger">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
-      </svg>
-      Lihat Info
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M5 12h14M12 5l7 7-7 7"/>
+    <button class="btn-switch-cam" id="btn-switch-cam" title="Ganti kamera">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M23 4v6h-6M1 20v-6h6"/>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
       </svg>
     </button>
+
+    <div class="img-result" id="img-test-result"></div>
+
+    <div class="side-fabs">
+      <div class="fab fab-upload" title="Tes gambar QR">
+        <label for="img-file-input">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
+          </svg>
+        </label>
+        <input type="file" id="img-file-input" accept="image/*">
+      </div>
+      <div class="fab-hint">Tes<br>Gambar</div>
+    </div>
+
+    <div class="bottom-action-container">
+      <button class="btn-info" id="btn-trigger">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="16" x2="12" y2="12"/>
+          <line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>
+        Lihat Info
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="popup-backdrop" id="popup-backdrop"></div>
+    <div class="bottom-sheet" id="bottom-sheet">
+      <div class="sheet-handle" id="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title-area">
+          <span class="sheet-tag" id="sheet-tag">Bersejarah</span>
+          <h2 id="sheet-title">Gedung</h2>
+        </div>
+        <button class="btn-close-sheet" id="btn-close-sheet">&times;</button>
+      </div>
+      <div class="sheet-body">
+        <img src="img/rektorat.jpg" alt="" class="sheet-thumbnail" id="sheet-thumb">
+        <div class="sheet-description" id="sheet-desc"></div>
+      </div>
+      <button class="btn-sheet-action" id="sheet-action">Buka Detail Sejarah</button>
+    </div>
+
+    <div class="debug-modal" id="debug-modal">
+      <div class="debug-box">
+        <h3>🔍 Debug Log <span style="font-size:12px;color:#a6adc8;">(gagal start video)</span></h3>
+        <pre id="debug-content">Tidak ada error</pre>
+        <button class="btn-close-debug" id="btn-close-debug">Tutup</button>
+      </div>
+    </div>
+
+    <nav class="bottom-nav">
+      <a class="nav-item" onclick="App.go('beranda.html')">
+        <div class="nav-icon-box">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4a5568" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </div>
+        <span>Beranda</span>
+      </a>
+      <a class="nav-item active" onclick="App.go('scan.html')">
+        <div class="nav-icon-box">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h4v4H4zM16 4h4v4h-4zM4 16h4v4H4zM12 12h.01M16 16h.01M16 20h.01M20 16h.01M20 20h.01M12 16h.01M12 20h.01"/></svg>
+        </div>
+        <span>Pindai</span>
+      </a>
+      <a class="nav-item" onclick="App.go('daftar.html')">
+        <div class="nav-icon-box">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4a5568" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16M4 6v.01M4 12v.01M4 18v.01"/></svg>
+        </div>
+        <span>Daftar</span>
+      </a>
+      <a class="nav-item" onclick="App.go('tentang.html')">
+        <div class="nav-icon-box">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4a5568" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        </div>
+        <span>Tentang</span>
+      </a>
+    </nav>
+
   </div>
 
-  <!-- Bottom sheet -->
-  <div class="popup-backdrop" id="popup-backdrop"></div>
-  <div class="bottom-sheet" id="bottom-sheet">
-    <div class="sheet-handle" id="sheet-handle"></div>
-    <div class="sheet-header">
-      <div class="sheet-title-area">
-        <span class="sheet-tag" id="sheet-tag">Bersejarah</span>
-        <h2 id="sheet-title">Gedung</h2>
-      </div>
-      <button class="btn-close-sheet" id="btn-close-sheet">&times;</button>
-    </div>
-    <div class="sheet-body">
-      <img src="img/rektorat.jpg" alt="" class="sheet-thumbnail" id="sheet-thumb">
-      <div class="sheet-description" id="sheet-desc"></div>
-    </div>
-    <button class="btn-sheet-action" id="sheet-action">Buka Detail Sejarah</button>
-  </div>
+  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/scan.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      Scanner.start();
 
-  <!-- DEBUG MODAL -->
-  <div class="debug-modal" id="debug-modal">
-    <div class="debug-box">
-      <h3>🔍 Debug Log <span style="font-size:12px;color:#a6adc8;">(gagal start video)</span></h3>
-      <pre id="debug-content">Tidak ada error</pre>
-      <button class="btn-close-debug" id="btn-close-debug">Tutup</button>
-    </div>
-  </div>
+      document.getElementById("btn-close-sheet").addEventListener("click", Scanner.closeSheet);
+      document.getElementById("popup-backdrop").addEventListener("click", Scanner.closeSheet);
+      document.getElementById("sheet-handle").addEventListener("click", Scanner.closeSheet);
 
-  <!-- Bottom nav -->
-  <nav class="bottom-nav">
-    <a class="nav-item" onclick="App.go('beranda.html')">
-      <div class="nav-icon-box">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4a5568" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-      </div>
-      <span>Beranda</span>
-    </a>
-    <a class="nav-item active" onclick="App.go('scan.html')">
-      <div class="nav-icon-box">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h4v4H4zM16 4h4v4h-4zM4 16h4v4H4zM12 12h.01M16 16h.01M16 20h.01M20 16h.01M20 20h.01M12 16h.01M12 20h.01"/></svg>
-      </div>
-      <span>Pindai</span>
-    </a>
-    <a class="nav-item" onclick="App.go('daftar.html')">
-      <div class="nav-icon-box">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4a5568" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16M4 6v.01M4 12v.01M4 18v.01"/></svg>
-      </div>
-      <span>Daftar</span>
-    </a>
-    <a class="nav-item" onclick="App.go('tentang.html')">
-      <div class="nav-icon-box">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4a5568" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-      </div>
-      <span>Tentang</span>
-    </a>
-  </nav>
+      document.getElementById("btn-trigger").addEventListener("click", function() {
+        var b = Scanner.getCurrent();
+        if (b) Scanner.openSheet();
+        else alert("Arahkan kamera ke QR code gedung terlebih dahulu.");
+      });
+      document.getElementById("label-trigger").addEventListener("click", function() {
+        var b = Scanner.getCurrent();
+        if (b) Scanner.openSheet();
+        else alert("Arahkan kamera ke QR code gedung terlebih dahulu.");
+      });
 
-</div>
+      document.getElementById("btn-switch-cam").addEventListener("click", function() {
+        Scanner.switchCamera();
+      });
 
-<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-<script src="js/data.js"></script>
-<script src="js/app.js"></script>
-<script src="js/scan.js"></script>
-<script>
-  document.addEventListener("DOMContentLoaded", function () {
-    Scanner.start();
+      document.getElementById("btn-close-debug").addEventListener("click", function() {
+        document.getElementById("debug-modal").classList.remove("show");
+      });
 
-    document.getElementById("btn-close-sheet").addEventListener("click", Scanner.closeSheet);
-    document.getElementById("popup-backdrop").addEventListener("click", Scanner.closeSheet);
-    document.getElementById("sheet-handle").addEventListener("click", Scanner.closeSheet);
+      document.querySelector(".app-container").addEventListener("click", function(e) {
+        var res = document.getElementById("img-test-result");
+        var fab = document.querySelector(".fab-upload");
+        if (res && res.className !== "img-result" &&
+          !res.contains(e.target) && !fab.contains(e.target)) {
+          res.className = "img-result";
+        }
+      });
 
-    document.getElementById("btn-trigger").addEventListener("click", function() {
-      var b = Scanner.getCurrent();
-      if (b) Scanner.openSheet();
-      else alert("Arahkan kamera ke QR code gedung terlebih dahulu.");
+      window.addEventListener("pagehide", Scanner.stop);
     });
-    document.getElementById("label-trigger").addEventListener("click", function() {
-      var b = Scanner.getCurrent();
-      if (b) Scanner.openSheet();
-      else alert("Arahkan kamera ke QR code gedung terlebih dahulu.");
-    });
-
-    document.getElementById("btn-switch-cam").addEventListener("click", function() {
-      Scanner.switchCamera();
-    });
-
-    document.getElementById("btn-close-debug").addEventListener("click", function() {
-      document.getElementById("debug-modal").classList.remove("show");
-    });
-
-    document.querySelector(".app-container").addEventListener("click", function(e) {
-      var res = document.getElementById("img-test-result");
-      var fab = document.querySelector(".fab-upload");
-      if (res && res.className !== "img-result"
-          && !res.contains(e.target) && !fab.contains(e.target)) {
-        res.className = "img-result";
-      }
-    });
-
-    window.addEventListener("pagehide", Scanner.stop);
-  });
-</script>
+  </script>
 </body>
 </html>
