@@ -272,95 +272,93 @@ let Scanner = (function () {
   }
 
   // ========== ZOOM (dengan fallback soft zoom) ==========
-  function setupZoom(stream) {
-    if (!ui.zoomControls) return;
-    const videoTrack = stream.getVideoTracks()[0];
-    if (!videoTrack) {
-      // Tidak ada track video, fallback ke soft zoom tetap
-      useSoftZoom = true;
-      initZoomSlider(1, 4, 0.1);
-      return;
-    }
-
-    const capabilities = videoTrack.getCapabilities ? videoTrack.getCapabilities() : {};
-    if (capabilities.zoom) {
-      // Hardware zoom support
-      zoomCapabilities = capabilities.zoom;
-      useSoftZoom = false;
-      const min = zoomCapabilities.min || 1;
-      const max = zoomCapabilities.max || 4;
-      const step = zoomCapabilities.step || 0.1;
-      initZoomSlider(min, max, step);
-      console.log("✅ Zoom hardware didukung");
-    } else {
-      // Fallback ke soft zoom (CSS scale)
-      useSoftZoom = true;
-      initZoomSlider(1, 4, 0.1);
-      console.log("⚠️ Zoom hardware tidak support, pakai soft zoom (CSS)");
-    }
+// ========== ZOOM (dengan fallback soft zoom) ==========
+function setupZoom(stream) {
+  if (!ui.zoomControls) return;
+  const videoTrack = stream.getVideoTracks()[0];
+  if (!videoTrack) {
+    useSoftZoom = true;
+    initZoomSlider(0.3, 4.0, 0.1);  // range 0.3x - 4.0x
+    return;
   }
 
-  function initZoomSlider(min, max, step) {
-    if (!ui.zoomSlider) return;
+  const capabilities = videoTrack.getCapabilities ? videoTrack.getCapabilities() : {};
+  if (capabilities.zoom) {
+    zoomCapabilities = capabilities.zoom;
+    useSoftZoom = false;
+    const min = Math.max(0.3, zoomCapabilities.min || 1);
+    const max = Math.min(4.0, zoomCapabilities.max || 4);
+    const step = zoomCapabilities.step || 0.1;
+    initZoomSlider(min, max, step);
+    console.log("✅ Zoom hardware didukung");
+  } else {
+    useSoftZoom = true;
+    initZoomSlider(0.3, 4.0, 0.1);
+    console.log("⚠️ Zoom hardware tidak support, pakai soft zoom (CSS)");
+  }
+}
 
-    ui.zoomSlider.min = min;
-    ui.zoomSlider.max = max;
-    ui.zoomSlider.step = step;
-    ui.zoomSlider.value = Math.min(Math.max(1, min), max);
-    ui.zoomSlider.disabled = false;
-    updateZoomDisplay(ui.zoomSlider.value);
+function initZoomSlider(min, max, step) {
+  if (!ui.zoomSlider) return;
 
-    // Tampilkan kontrol zoom
-    ui.zoomControls.style.display = "flex";
+  ui.zoomSlider.min = min;
+  ui.zoomSlider.max = max;
+  ui.zoomSlider.step = step;
+  // Set nilai awal ke 1.0 (atau min jika min > 1)
+  let initial = Math.min(Math.max(1.0, min), max);
+  ui.zoomSlider.value = initial;
+  ui.zoomSlider.disabled = false;
+  updateZoomDisplay(initial);
 
-    // Event listener
-    ui.zoomSlider.oninput = function() {
-      const val = parseFloat(this.value);
-      applyZoom(val);
-    };
+  ui.zoomControls.style.display = "flex";
 
-    // Set zoom awal
-    applyZoom(parseFloat(ui.zoomSlider.value));
+  // Hapus event listener lama (jika ada) untuk menghindari duplikasi
+  ui.zoomSlider.oninput = null;
+  ui.zoomSlider.oninput = function() {
+    const val = parseFloat(this.value);
+    applyZoom(val);
+  };
+
+  // Terapkan zoom awal
+  applyZoom(initial);
+}
+
+function applyZoom(value) {
+  const min = parseFloat(ui.zoomSlider.min) || 0.3;
+  const max = parseFloat(ui.zoomSlider.max) || 4.0;
+  const clamped = Math.min(Math.max(value, min), max);
+  currentZoom = clamped;
+
+  // Update slider value agar sinkron (jika berbeda)
+  if (ui.zoomSlider && Math.abs(parseFloat(ui.zoomSlider.value) - clamped) > 0.001) {
+    ui.zoomSlider.value = clamped;
   }
 
-  function applyZoom(value) {
-    const clamped = Math.min(Math.max(value, parseFloat(ui.zoomSlider.min) || 1), parseFloat(ui.zoomSlider.max) || 4);
-    currentZoom = clamped;
-
-    if (useSoftZoom) {
-      // Soft zoom menggunakan CSS transform pada video
-      if (videoElement) {
-        // Scale dimulai dari 1, kita gunakan nilai clamped
-        const scale = clamped;
-        videoElement.style.transform = `translate(-50%, -50%) scale(${scale})`;
-        // Karena video sudah di tengah dengan transform: translate(-50%, -50%)
-        // Kita perlu menggabungkan dengan scale
-        // Namun di CSS kita sudah pakai transform: translate(-50%, -50%) di style
-        // Lebih baik kita set langsung di style inline
-        videoElement.style.transform = `translate(-50%, -50%) scale(${scale})`;
-        // Pastikan transform-origin di tengah
-        videoElement.style.transformOrigin = 'center center';
-      }
+  if (useSoftZoom) {
+    if (videoElement) {
+      // Terapkan scale dengan mempertahankan posisi tengah
+      videoElement.style.transform = `translate(-50%, -50%) scale(${clamped})`;
+      videoElement.style.transformOrigin = 'center center';
+    }
+    updateZoomDisplay(clamped);
+  } else {
+    if (!currentStream) return;
+    const videoTrack = currentStream.getVideoTracks()[0];
+    if (!videoTrack) return;
+    videoTrack.applyConstraints({
+      advanced: [{ zoom: clamped }]
+    })
+    .then(() => {
       updateZoomDisplay(clamped);
-    } else {
-      // Hardware zoom
-      if (!currentStream) return;
-      const videoTrack = currentStream.getVideoTracks()[0];
-      if (!videoTrack) return;
-      videoTrack.applyConstraints({
-        advanced: [{ zoom: clamped }]
-      })
-      .then(() => {
-        updateZoomDisplay(clamped);
-      })
-      .catch(err => {
-        console.error("Gagal apply hardware zoom:", err);
-        // Jika gagal, fallback ke soft zoom
-        useSoftZoom = true;
-        applyZoom(clamped);
-      });
-    }
+    })
+    .catch(err => {
+      console.error("Gagal apply hardware zoom:", err);
+      // Fallback ke soft zoom
+      useSoftZoom = true;
+      applyZoom(clamped);
+    });
   }
+}
 
   function updateZoomDisplay(val) {
     if (ui.zoomValue) {
