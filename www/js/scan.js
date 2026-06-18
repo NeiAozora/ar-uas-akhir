@@ -24,7 +24,6 @@ let Scanner = (function () {
   }
 
   function onScanSuccess(decodedText) {
-    console.log(decodedText)
     if (decodedText === lastQR) return;
     lastQR = decodedText;
 
@@ -52,7 +51,7 @@ let Scanner = (function () {
     cacheUI();
     setLabel("Mengaktifkan kamera…", "idle");
 
-    html5QrCode = new Html5QrcodeScanner("qr-reader", { fps: 10, qrbox: 250 });
+    html5QrCode = new Html5Qrcode("qr-reader");
 
     Html5Qrcode.getCameras().then(cameras => {
       if (!cameras || cameras.length === 0) {
