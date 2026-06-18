@@ -1,8 +1,8 @@
 // =====================================================================
-// UNEJ Heritage AR — SCANNER (PATCHED)
+// UNEJ Heritage AR — SCANNER (PATCHED + FILTER OBS)
 // - Pengecekan izin kamera eksplisit
 // - qrbox dinamis menyesuaikan viewport
-// - CSS dipastikan tidak menimpa video
+// - FILTER OBS / VIRTUAL CAMERA
 // =====================================================================
 
 let Scanner = (function () {
@@ -11,6 +11,7 @@ let Scanner = (function () {
   let lastQR        = null;
   let invalidTimeout = null;
   let scannerRunning = false;
+  let selectedCameraId = null; // Simpan ID kamera yang dipilih
 
   const ui = {};
 
@@ -58,37 +59,31 @@ let Scanner = (function () {
     }
   }
 
-  // ========== FUNGSI START YANG DIPERBAIKI ==========
+  // ========== FUNGSI START DENGAN FILTER OBS ==========
   function start() {
     cacheUI();
     setLabel("Mengaktifkan kamera…", "idle");
 
-    // 1️⃣ Cek dukungan getUserMedia
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       setLabel("❌ Browser tidak support kamera", "invalid");
       console.error("getUserMedia tidak tersedia");
       return;
     }
 
-    // 2️⃣ Minta izin secara eksplisit (agar pengguna tidak bingung)
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
       .then(stream => {
-        // Izin diberikan, stop stream sementara
         stream.getTracks().forEach(t => t.stop());
-        // Lanjut inisialisasi scanner
         initScanner();
       })
       .catch(err => {
         console.error("❌ Izin kamera ditolak:", err);
         setLabel("❌ Izin kamera ditolak — klik ikon gembok di URL", "invalid");
-        // Tampilkan pesan di toast juga
         showToast("⚠️ Izin kamera diperlukan — periksa pengaturan browser", "invalid");
       });
   }
 
-  // Fungsi inisialisasi scanner (dipanggil setelah izin OK)
+  // ========== INISIALISASI SCANNER DENGAN FILTER ==========
   function initScanner() {
-    // Hentikan scanner lama jika ada
     if (html5QrCode) {
       html5QrCode.stop().catch(() => {});
       html5QrCode.clear().catch(() => {});
@@ -104,36 +99,77 @@ let Scanner = (function () {
           return;
         }
 
-        // Pilih kamera belakang jika ada
-        const backCam = cameras.find(c =>
-          /back|rear|environment/i.test(c.label)
-        ) || cameras[cameras.length - 1];
+        console.log("📷 Daftar semua kamera:");
+        cameras.forEach((c, i) => {
+          console.log(`  ${i}: ${c.label} (id: ${c.id})`);
+        });
 
-        // Dapatkan ukuran container untuk qrbox dinamis
+        // ========== FILTER OBS / VIRTUAL CAMERA ==========
+        const virtualKeywords = [
+          "obs", "virtual", "manycam", "screen", "display", "capture",
+          "camera", "webcam" // Hati-hati: kamera fisik juga bisa berlabel "Webcam"
+        ];
+
+        // 1. Cari kamera yang TIDAK mengandung kata kunci virtual
+        let filtered = cameras.filter(cam => {
+          const label = cam.label.toLowerCase();
+          // Tolak jika mengandung keyword virtual
+          const isVirtual = virtualKeywords.some(kw => label.includes(kw));
+          // Tapi tetap terima jika label mengandung "back" atau "rear" (biasanya kamera fisik)
+          const isPhysical = label.includes("back") || label.includes("rear") || label.includes("environment");
+          return !isVirtual || isPhysical;
+        });
+
+        // 2. Jika hasil filter kosong, ambil semua kamera kecuali OBS saja
+        if (filtered.length === 0) {
+          filtered = cameras.filter(cam => {
+            const label = cam.label.toLowerCase();
+            return !label.includes("obs") && !label.includes("virtual");
+          });
+        }
+
+        // 3. Jika masih kosong, ambil semua (fallback)
+        if (filtered.length === 0) {
+          filtered = cameras;
+          console.warn("⚠️ Tidak ada kamera setelah filter, menggunakan semua kamera");
+        }
+
+        console.log("📷 Filtered cameras:", filtered.map(c => c.label));
+
+        // Pilih kamera pertama dari hasil filter, atau kamera dengan "back"/"rear"
+        let selected = filtered.find(c =>
+          /back|rear|environment/i.test(c.label)
+        ) || filtered[0];
+
+        // Jika masih OBS (karena fallback), paksa pilih kamera terakhir (biasanya webcam fisik)
+        if (selected && selected.label.toLowerCase().includes("obs")) {
+          selected = cameras[cameras.length - 1]; // Ambil kamera terakhir (biasanya webcam)
+          console.warn("⚠️ OBS terdeteksi, paksa pilih kamera terakhir:", selected.label);
+        }
+
+        selectedCameraId = selected.id;
+        console.log("✅ Kamera dipilih:", selected.label);
+
+        // Hitung ukuran qrbox
         const container = document.getElementById("qr-reader");
         const rect = container.getBoundingClientRect();
         const viewportSize = Math.min(rect.width, rect.height);
-        // qrbox antara 200px dan 70% dari ukuran terkecil
         const qrSize = Math.min(Math.max(200, viewportSize * 0.7), 350);
 
-        console.log("📐 qrbox size:", qrSize);
-
         html5QrCode.start(
-          backCam.id,
+          selectedCameraId,
           {
             fps: 12,
             qrbox: { width: qrSize, height: qrSize },
             aspectRatio: 1.333,
           },
           onScanSuccess,
-          (err) => {
-            // Abaikan error per-frame (biasanya noise)
-          }
+          (err) => { /* abaikan error per-frame */ }
         )
         .then(() => {
           scannerRunning = true;
           setLabel("Arahkan ke QR gedung…", "idle");
-          console.log("✅ Kamera berhasil menyala!");
+          console.log("✅ Kamera berhasil menyala dengan ID:", selectedCameraId);
         })
         .catch(err => {
           console.error("❌ Gagal start kamera:", err);
@@ -248,6 +284,7 @@ let Scanner = (function () {
     stop,
     openSheet,
     closeSheet,
-    getCurrent: () => currentBuilding
+    getCurrent: () => currentBuilding,
+    getSelectedCamera: () => selectedCameraId // Untuk debug
   };
 })();
