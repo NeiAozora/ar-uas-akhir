@@ -3,28 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob: 'unsafe-inline' 'unsafe-eval'; media-src * blob: data: mediastream:; img-src 'self' data: blob: content:; connect-src 'self' data: blob:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob: 'unsafe-inline' 'unsafe-eval' https://unpkg.com; media-src * blob: data: mediastream:; img-src 'self' data: blob: content:; connect-src 'self' data: blob: https://unpkg.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com;">
     <title>Pindai AR - UNEJ Heritage</title>
     <style>
         * { margin:0; padding:0; box-sizing:border-box; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; }
         body { background:#000; color:#333; display:flex; justify-content:center; }
         .app-container { width:100%; max-width:480px; height:100vh; background:#000; position:relative; box-shadow:0 0 15px rgba(0,0,0,.5); overflow:hidden; }
-        #camera-stream { position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:1; }
-        #scan-canvas { display:none; }
-        .camera-overlay { position:absolute; top:0; left:0; width:100%; height:100%; background:linear-gradient(to bottom,rgba(0,0,0,.3) 0%,rgba(0,0,0,0) 20%,rgba(0,0,0,0) 80%,rgba(0,0,0,.4) 100%); z-index:2; }
+
+        /* html5-qrcode renders into #qr-reader — make it fill the screen */
+        #qr-reader {
+            position:absolute; top:0; left:0; width:100% !important; height:100% !important;
+            z-index:1; background:#000;
+        }
+        /* Hide the default html5-qrcode UI chrome we don't need */
+        #qr-reader > img,
+        #qr-reader__header_message,
+        #qr-reader__status_span,
+        #qr-reader__dashboard,
+        #qr-reader__filescan_input { display:none !important; }
+        /* Make its internal video fill the container */
+        #qr-reader video {
+            width:100% !important; height:100% !important;
+            object-fit:cover !important; position:absolute; top:0; left:0;
+        }
+
+        .camera-overlay { position:absolute; top:0; left:0; width:100%; height:100%; background:linear-gradient(to bottom,rgba(0,0,0,.35) 0%,rgba(0,0,0,0) 20%,rgba(0,0,0,0) 80%,rgba(0,0,0,.45) 100%); z-index:2; pointer-events:none; }
         .top-header { position:absolute; top:0; left:0; width:100%; display:flex; justify-content:space-between; align-items:center; padding:20px; z-index:10; }
-        .header-left { display:flex; align-items:center;10px; }
+        .header-left { display:flex; align-items:center; gap:10px; }
         .header-left h1 { font-size:18px; font-weight:700; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.5); }
         .bell-icon { color:#fff; cursor:pointer; filter:drop-shadow(0 1px 3px rgba(0,0,0,.5)); }
+
         .scanner-ui { position:absolute; top:0; left:0; width:100%; height:100%; z-index:5; display:flex; flex-direction:column; justify-content:center; align-items:center; pointer-events:none; }
-        .viewfinder { width:260px; height:260px; border:2px solid rgba(255,255,255,.8); border-radius:20px; position:relative; box-shadow:0 0 0 9999px rgba(0,0,0,.2); }
-        .detected-label { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:#023474; color:#fff; padding:10px 16px; border-radius:20px; font-size:14px; font-weight:600; display:flex; align-items:center;8px; pointer-events:auto; border:2px solid rgba(255,255,255,.2); z-index:6; white-space:nowrap; cursor:pointer; }
-        .dot-indicator { width:8px; height:8px; background:#facc15; border-radius:50%; box-shadow:0 0 8px currentColor; }
-        .side-fabs { position:absolute; top:50%; right:20px; transform:translateY(-50%); display:flex; flex-direction:column;16px; pointer-events:auto; z-index:7; }
+        .viewfinder { width:260px; height:260px; border:2px solid rgba(255,255,255,.8); border-radius:20px; position:relative; box-shadow:0 0 0 9999px rgba(0,0,0,.25); }
+        /* Corner accents */
+        .viewfinder::before, .viewfinder::after,
+        .corner-br::before, .corner-br::after {
+            content:''; position:absolute; width:24px; height:24px; border-color:#F4D03F; border-style:solid;
+        }
+        .viewfinder::before { top:-2px; left:-2px; border-width:3px 0 0 3px; border-radius:20px 0 0 0; }
+        .viewfinder::after  { top:-2px; right:-2px; border-width:3px 3px 0 0; border-radius:0 20px 0 0; }
+        .corner-br { position:absolute; inset:0; }
+        .corner-br::before { bottom:-2px; left:-2px; border-width:0 0 3px 3px; border-radius:0 0 0 20px; }
+        .corner-br::after  { bottom:-2px; right:-2px; border-width:0 3px 3px 0; border-radius:0 0 20px 0; }
+
+        .detected-label { position:absolute; bottom:-50px; left:50%; transform:translateX(-50%); background:#023474; color:#fff; padding:10px 16px; border-radius:20px; font-size:13px; font-weight:600; display:flex; align-items:center; gap:8px; pointer-events:auto; border:2px solid rgba(255,255,255,.2); z-index:6; white-space:nowrap; cursor:pointer; }
+        .dot-indicator { width:8px; height:8px; background:#facc15; border-radius:50%; box-shadow:0 0 8px currentColor; flex-shrink:0; }
+
+        .side-fabs { position:absolute; top:50%; right:20px; transform:translateY(-50%); display:flex; flex-direction:column; gap:16px; pointer-events:auto; z-index:7; }
         .fab { width:44px; height:44px; background:#fff; border-radius:50%; display:flex; justify-content:center; align-items:center; box-shadow:0 4px 10px rgba(0,0,0,.2); cursor:pointer; border:none; }
         .fab svg { fill:#333; width:20px; height:20px; }
+
         .bottom-action-container { position:absolute; bottom:100px; width:100%; display:flex; justify-content:center; z-index:10; pointer-events:auto; }
-        .btn-info { background:#023474; color:#fff; border:none; padding:14px 30px; border-radius:30px; font-size:16px; font-weight:700; display:flex; align-items:center;10px; box-shadow:0 4px 12px rgba(0,0,0,.3); cursor:pointer; }
+        .btn-info { background:#023474; color:#fff; border:none; padding:14px 30px; border-radius:30px; font-size:16px; font-weight:700; display:flex; align-items:center; gap:10px; box-shadow:0 4px 12px rgba(0,0,0,.3); cursor:pointer; }
+
         .popup-backdrop { position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.4); z-index:150; opacity:0; visibility:hidden; transition:opacity .3s,visibility .3s; }
         .popup-backdrop.show { opacity:1; visibility:visible; }
         .bottom-sheet { position:absolute; bottom:0; left:0; width:100%; background:#fff; border-top-left-radius:24px; border-top-right-radius:24px; padding:20px; padding-bottom:calc(20px + env(safe-area-inset-bottom,10px)); z-index:160; box-shadow:0 -4px 20px rgba(0,0,0,.3); transform:translateY(100%); transition:transform .4s cubic-bezier(.25,1,.5,1); }
@@ -34,13 +65,14 @@
         .sheet-title-area .sheet-tag { display:inline-block; background:#e2eafc; color:#023474; font-size:11px; font-weight:700; padding:4px 10px; border-radius:6px; margin-bottom:6px; }
         .sheet-title-area h2 { font-size:20px; font-weight:700; color:#1a202c; }
         .btn-close-sheet { background:#f1f5f9; border:none; width:32px; height:32px; border-radius:50%; display:flex; justify-content:center; align-items:center; cursor:pointer; color:#64748b; font-size:18px; }
-        .sheet-body { display:flex;16px; align-items:center; margin-bottom:20px; }
+        .sheet-body { display:flex; gap:16px; align-items:center; margin-bottom:20px; }
         .sheet-thumbnail { width:90px; height:90px; border-radius:12px; object-fit:cover; background:#eaeaea; }
         .sheet-description { flex:1; font-size:13px; line-height:1.5; color:#4a5568; }
         .btn-sheet-action { width:100%; background:#023474; color:#fff; border:none; padding:14px; border-radius:12px; font-size:15px; font-weight:700; cursor:pointer; text-align:center; box-shadow:0 2px 5px rgba(2,52,116,.2); }
         .btn-sheet-action:active { background:#011e46; }
+
         .bottom-nav { position:absolute; bottom:0; width:100%; background:#fff; border-top:1px solid #eaeaea; display:flex; justify-content:space-between; padding:10px 20px; padding-bottom:env(safe-area-inset-bottom,10px); z-index:100; }
-        .nav-item { display:flex; flex-direction:column; align-items:center;4px; text-decoration:none; color:#718096; font-size:11px; font-weight:500; width:60px; cursor:pointer; }
+        .nav-item { display:flex; flex-direction:column; align-items:center; gap:4px; text-decoration:none; color:#718096; font-size:11px; font-weight:500; width:60px; cursor:pointer; }
         .nav-icon-box { width:48px; height:32px; display:flex; justify-content:center; align-items:center; border-radius:16px; }
         .nav-item.active { color:#023474; font-weight:600; }
         .nav-item.active .nav-icon-box { background:#e2eafc; }
@@ -49,8 +81,9 @@
 </head>
 <body>
     <div class="app-container">
-        <video id="camera-stream" autoplay playsinline muted></video>
-        <canvas id="scan-canvas"></canvas>
+
+        <!-- html5-qrcode mounts its video here -->
+        <div id="qr-reader"></div>
         <div class="camera-overlay"></div>
 
         <header class="top-header">
@@ -65,6 +98,7 @@
 
         <div class="scanner-ui">
             <div class="viewfinder">
+                <div class="corner-br"></div>
                 <div class="detected-label" id="label-trigger">
                     <div class="dot-indicator" id="dot-indicator"></div>
                     <span id="detected-text">Mengaktifkan kamera…</span>
@@ -75,9 +109,6 @@
         <div class="side-fabs">
             <button class="fab" onclick="App.go('daftar.html')" title="Daftar gedung">
                 <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" stroke="#333" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
-            </button>
-            <button class="fab" title="Pengaturan">
-                <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.73 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .43-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.49-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
             </button>
         </div>
 
@@ -114,7 +145,8 @@
         </nav>
     </div>
 
-    <script src="js/jsQR.js"></script>
+    <!-- html5-qrcode from CDN (no local file needed) -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="js/data.js"></script>
     <script src="js/app.js"></script>
     <script src="js/scan.js"></script>
@@ -124,7 +156,6 @@
             document.getElementById("btn-close-sheet").addEventListener("click", Scanner.closeSheet);
             document.getElementById("popup-backdrop").addEventListener("click", Scanner.closeSheet);
             document.getElementById("sheet-handle").addEventListener("click", Scanner.closeSheet);
-            // "Lihat Info" / label: buka detail gedung terakhir terdeteksi, atau buka sheet
             function showCurrent() {
                 var b = Scanner.getCurrent();
                 if (b) Scanner.openSheet(); else alert("Arahkan kamera ke QR code gedung terlebih dahulu.");

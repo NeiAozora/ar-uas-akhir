@@ -1,20 +1,13 @@
 /* =====================================================================
- * UNEJ Heritage AR — SCANNER (Marker-based AR via QR Code)
- * ---------------------------------------------------------------------
- * Alur:
- *   1. Aktifkan kamera belakang (getUserMedia).
- *   2. Tiap frame digambar ke <canvas> tersembunyi, lalu jsQR membaca
- *      isi QR code.
- *   3. Isi QR dicocokkan ke data gedung (DB.byQR). Jika cocok:
- *      - label "terdeteksi" di-update,
- *      - bottom sheet info muncul otomatis,
- *      - tombol "Buka Detail" mengarah ke detail.html?id=...
+ * UNEJ Heritage AR — SCANNER (html5-qrcode)
  * ===================================================================== */
 
 let Scanner = (function () {
-  let video, canvas, ctx, raf;
+  let html5QrCode = null;
   let currentBuilding = null;
   let lastQR = null;
+  let isRunning = false;
+  let invalidTimeout = null;
 
   const ui = {};
 
@@ -30,60 +23,92 @@ let Scanner = (function () {
     ui.sheetBtn   = document.getElementById("sheet-action");
   }
 
-  async function start() {
-    cacheUI();
-    video  = document.getElementById("camera-stream");
-    canvas = document.getElementById("scan-canvas");
-    ctx    = canvas.getContext("2d", { willReadFrequently: true });
+  function onScanSuccess(decodedText) {
+    // Abaikan kalau QR sama persis dengan yang terakhir diproses
+    if (decodedText === lastQR) return;
+    lastQR = decodedText;
 
-    const ok = await App.ensureCameraPermission();
-    if (!ok) { setLabel("Izin kamera ditolak", false); return; }
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }
-      });
-      video.srcObject = stream;
-      await video.play();
-      setLabel("Arahkan ke QR gedung…", false);
-      raf = requestAnimationFrame(tick);
-    } catch (err) {
-      console.error("Kamera gagal:", err);
-      setLabel("Kamera tidak tersedia", false);
-    }
-  }
-
-  function tick() {
-    if (video.readyState === video.HAVE_ENOUGH_DATA) {
-      canvas.width  = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const code = jsQR(img.data, img.width, img.height, { inversionAttempts: "dontInvert" });
-      if (code && code.data) handleQR(code.data);
-    }
-    raf = requestAnimationFrame(tick);
-  }
-
-  function handleQR(text) {
-    if (text === lastQR) return;       // hindari proses berulang frame yang sama
-    lastQR = text;
-    const b = DB.byQR(text);
+    const b = DB.byQR(decodedText);
     if (b) {
+      // ✅ QR valid — stop scanner dulu, baru tampilkan info
+      stop();
       currentBuilding = b;
-      setLabel(b.name, true);
+      setLabel(b.name, "ok");
       fillSheet(b);
       openSheet();
-      if (navigator.vibrate) navigator.vibrate(120);
+      if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
     } else {
-      setLabel("QR tidak dikenal", false);
-      setTimeout(() => { lastQR = null; }, 1500); // boleh coba lagi
+      // ❌ QR terbaca tapi bukan gedung UNEJ — kasih feedback, lanjut scan
+      setLabel("❌ Bukan QR gedung UNEJ", "invalid");
+      clearTimeout(invalidTimeout);
+      invalidTimeout = setTimeout(() => {
+        lastQR = null; // boleh scan lagi
+        setLabel("Arahkan ke QR gedung…", "idle");
+      }, 2000);
     }
   }
 
-  function setLabel(txt, active) {
+  function start() {
+    cacheUI();
+    setLabel("Mengaktifkan kamera…", "idle");
+
+    html5QrCode = new Html5Qrcode("qr-reader");
+
+    Html5Qrcode.getCameras().then(cameras => {
+      if (!cameras || cameras.length === 0) {
+        setLabel("Kamera tidak ditemukan", "idle");
+        return;
+      }
+
+      const backCam = cameras.find(c =>
+        /back|rear|environment/i.test(c.label)
+      ) || cameras[cameras.length - 1];
+
+      html5QrCode.start(
+        backCam.id,
+        { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
+        onScanSuccess,
+        () => {} // abaikan error per-frame (bukan QR = normal)
+      ).then(() => {
+        isRunning = true;
+        setLabel("Arahkan ke QR gedung…", "idle");
+      }).catch(err => {
+        console.error("Kamera gagal start:", err);
+        setLabel("Kamera tidak tersedia", "idle");
+      });
+
+    }).catch(err => {
+      console.error("getCameras gagal:", err);
+      setLabel("Izin kamera ditolak", "idle");
+    });
+  }
+
+  function stop() {
+    if (html5QrCode && isRunning) {
+      html5QrCode.stop().catch(() => {});
+      isRunning = false;
+    }
+  }
+
+  // Restart scanner (dipanggil saat sheet ditutup)
+  function resume() {
+    currentBuilding = null;
+    lastQR = null;
+    if (html5QrCode && !isRunning) {
+      html5QrCode.resume ? html5QrCode.resume() : start();
+    } else if (!html5QrCode) {
+      start();
+    }
+    // Kalau sudah running (sheet ditutup tapi kamera masih jalan), reset saja label
+    setLabel("Arahkan ke QR gedung…", "idle");
+  }
+
+  function setLabel(txt, state) {
     if (ui.label) ui.label.textContent = txt;
-    if (ui.dot) ui.dot.style.background = active ? "#4ade80" : "#facc15";
+    if (ui.dot) {
+      const colors = { ok: "#4ade80", invalid: "#f87171", idle: "#facc15" };
+      ui.dot.style.background = colors[state] || "#facc15";
+    }
   }
 
   function fillSheet(b) {
@@ -94,13 +119,16 @@ let Scanner = (function () {
     ui.sheetBtn.onclick       = () => App.goDetail(b.id);
   }
 
-  function openSheet()  { ui.sheet.classList.add("open");  ui.backdrop.classList.add("show"); }
-  function closeSheet() { ui.sheet.classList.remove("open"); ui.backdrop.classList.remove("show"); lastQR = null; }
-
-  function stop() {
-    if (raf) cancelAnimationFrame(raf);
-    if (video && video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
+  function openSheet() {
+    ui.sheet.classList.add("open");
+    ui.backdrop.classList.add("show");
   }
 
-  return { start, stop, openSheet, closeSheet, getCurrent: () => currentBuilding };
+  function closeSheet() {
+    ui.sheet.classList.remove("open");
+    ui.backdrop.classList.remove("show");
+    resume(); // restart scan setelah sheet ditutup
+  }
+
+  return { start, stop, resume, openSheet, closeSheet, getCurrent: () => currentBuilding };
 })();
