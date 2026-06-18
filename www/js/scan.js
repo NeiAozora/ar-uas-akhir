@@ -31,7 +31,6 @@ let Scanner = (function () {
 
     const b = DB.byQR(decodedText);
     if (b) {
-      // ✅ Valid — tampilkan sheet, kamera tetap jalan di belakang
       currentBuilding = b;
       setLabel(b.name, "ok");
       fillSheet(b);

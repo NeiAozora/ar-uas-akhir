@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob: 'unsafe-inline' 'unsafe-eval' https://unpkg.com; media-src * blob: data: mediastream:; img-src 'self' data: blob: content:; connect-src 'self' data: blob: https://unpkg.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob: 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; media-src * blob: data: mediastream:; img-src 'self' data: blob:; connect-src 'self' data: blob: https://cdn.jsdelivr.net; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net;">
     <title>Pindai AR - UNEJ Heritage</title>
     <style>
         * { margin:0; padding:0; box-sizing:border-box; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; }
@@ -15,16 +15,19 @@
             position:absolute; top:0; left:0; width:100% !important; height:100% !important;
             z-index:1; background:#000;
         }
-        /* Hide the default html5-qrcode UI chrome we don't need */
+        /* Hide all default html5-qrcode UI chrome */
         #qr-reader > img,
         #qr-reader__header_message,
         #qr-reader__status_span,
         #qr-reader__dashboard,
-        #qr-reader__filescan_input { display:none !important; }
+        #qr-reader__dashboard_section,
+        #qr-reader__dashboard_section_swaplink,
+        #qr-reader__filescan_input,
+        #qr-reader button { display:none !important; }
         /* Make its internal video fill the container */
         #qr-reader video {
             width:100% !important; height:100% !important;
-            object-fit:cover !important; position:absolute; top:0; left:0;
+            object-fit:cover !important; position:absolute !important; top:0; left:0;
         }
 
         .camera-overlay { position:absolute; top:0; left:0; width:100%; height:100%; background:linear-gradient(to bottom,rgba(0,0,0,.35) 0%,rgba(0,0,0,0) 20%,rgba(0,0,0,0) 80%,rgba(0,0,0,.45) 100%); z-index:2; pointer-events:none; }
@@ -35,7 +38,6 @@
 
         .scanner-ui { position:absolute; top:0; left:0; width:100%; height:100%; z-index:5; display:flex; flex-direction:column; justify-content:center; align-items:center; pointer-events:none; }
         .viewfinder { width:260px; height:260px; border:2px solid rgba(255,255,255,.8); border-radius:20px; position:relative; box-shadow:0 0 0 9999px rgba(0,0,0,.25); }
-        /* Corner accents */
         .viewfinder::before, .viewfinder::after,
         .corner-br::before, .corner-br::after {
             content:''; position:absolute; width:24px; height:24px; border-color:#F4D03F; border-style:solid;
@@ -145,20 +147,21 @@
         </nav>
     </div>
 
-    <!-- html5-qrcode from CDN (no local file needed) -->
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <!-- html5-qrcode from jsDelivr (lebih stabil dari unpkg) -->
+    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="js/data.js"></script>
     <script src="js/app.js"></script>
     <script src="js/scan.js"></script>
     <script>
-        App.onReady(function () {
+        document.addEventListener("DOMContentLoaded", function () {
             Scanner.start();
             document.getElementById("btn-close-sheet").addEventListener("click", Scanner.closeSheet);
             document.getElementById("popup-backdrop").addEventListener("click", Scanner.closeSheet);
             document.getElementById("sheet-handle").addEventListener("click", Scanner.closeSheet);
             function showCurrent() {
                 var b = Scanner.getCurrent();
-                if (b) Scanner.openSheet(); else alert("Arahkan kamera ke QR code gedung terlebih dahulu.");
+                if (b) Scanner.openSheet();
+                else alert("Arahkan kamera ke QR code gedung terlebih dahulu.");
             }
             document.getElementById("btn-trigger").addEventListener("click", showCurrent);
             document.getElementById("label-trigger").addEventListener("click", showCurrent);
