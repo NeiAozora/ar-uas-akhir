@@ -124,7 +124,12 @@ let Scanner = (function () {
     ui.imgResult.className = "img-result scanning";
     ui.imgResult.textContent = "🔍 Memproses gambar…";
 
-    Html5Qrcode.scanFile(file, true)
+    // scanFile adalah instance method, bukan static — pakai instance html5QrCode
+    // Jika scanner sedang jalan, gunakan instance yang sudah ada.
+    // Jika belum (misal kamera belum ready), buat instance sementara.
+    const scanner = html5QrCode || new Html5Qrcode("qr-reader-img-dummy");
+
+    scanner.scanFile(file, /* showImage= */ false)
       .then(decodedText => {
         const b = DB.byQR(decodedText);
         if (b) {
