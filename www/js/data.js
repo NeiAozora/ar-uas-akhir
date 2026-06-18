@@ -67,7 +67,7 @@ const BUILDINGS = [
     name: "Fakultas Ilmu Komputer",
     tag: "Fakultas",
     location: "Kampus Timur, Jember",
-    image: "img/fasilkom.webp",
+    image: "img/Fasilkom.webp",
     featured: true,
     category: "fakultas",
     year: 2014,
