@@ -1,8 +1,9 @@
 // =====================================================================
-// UNEJ Heritage AR — SCANNER (dengan Soft Zoom fallback)
-// - Deteksi mobile: hanya kamera "back"
-// - Zoom hardware jika support, fallback ke CSS scale
-// - Slider selalu tampil (kecuali error)
+// UNEJ Heritage AR — SCANNER (Slider 0.25 - 4.0)
+// - Soft zoom dengan CSS transform
+// - Slider min 0.25 (25%) sampai 4.0 (400%)
+// - Default 1.0 (100%)
+// - Hardware zoom fallback ke soft zoom
 // =====================================================================
 
 let Scanner = (function () {
@@ -16,9 +17,14 @@ let Scanner = (function () {
   let currentCameraIndex = 0;
   let currentStream = null;
   let zoomCapabilities = null;
-  let useSoftZoom = false;        // true jika pakai CSS scale
+  let useSoftZoom = false;
   let currentZoom = 1.0;
-  let videoElement = null;        // referensi ke video untuk soft zoom
+  let videoElement = null;
+
+  // ---- SLIDER RENTANG BARU ----
+  const ZOOM_MIN = 0.25;   // 25% (diperkecil)
+  const ZOOM_MAX = 4.0;    // 400% (diperbesar)
+  const ZOOM_STEP = 0.05;
 
   const ui = {};
 
@@ -142,7 +148,6 @@ let Scanner = (function () {
           return;
         }
 
-        // ===== FILTER KAMERA =====
         let filtered = [];
         const mobile = isMobile();
         console.log("📱 Perangkat mobile?", mobile);
@@ -153,7 +158,6 @@ let Scanner = (function () {
             return label.includes("back") || label.includes("rear");
           });
           if (filtered.length === 0) {
-            console.warn("Tidak ada kamera 'back', ambil semua kecuali OBS/virtual");
             filtered = cameras.filter(cam => {
               const label = cam.label.toLowerCase();
               return !label.includes("obs") && !label.includes("virtual");
@@ -208,7 +212,7 @@ let Scanner = (function () {
     if (ui.zoomControls) ui.zoomControls.style.display = "none";
   }
 
-  // ---------- START KAMERA DENGAN ID ----------
+  // ---------- START KAMERA ----------
   function startCamera(cameraId) {
     stopCamera();
 
@@ -238,7 +242,6 @@ let Scanner = (function () {
       setLabel("Arahkan ke QR gedung…", "idle");
       console.log("✅ Kamera berhasil menyala, ID:", cameraId);
 
-      // Ambil elemen video
       videoElement = document.querySelector("#qr-reader video");
       if (videoElement && videoElement.srcObject) {
         currentStream = videoElement.srcObject;
@@ -271,98 +274,93 @@ let Scanner = (function () {
     startCamera(cam.id);
   }
 
-  // ========== ZOOM (dengan fallback soft zoom) ==========
-// ========== ZOOM (dengan fallback soft zoom) ==========
-function setupZoom(stream) {
-  if (!ui.zoomControls) return;
-  const videoTrack = stream.getVideoTracks()[0];
-  if (!videoTrack) {
-    useSoftZoom = true;
-    initZoomSlider(0.3, 4.0, 0.1);  // range 0.3x - 4.0x
-    return;
-  }
+  // ========== ZOOM (Slider 0.25 - 4.0) ==========
+  function setupZoom(stream) {
+    if (!ui.zoomControls) return;
+    const videoTrack = stream.getVideoTracks()[0];
 
-  const capabilities = videoTrack.getCapabilities ? videoTrack.getCapabilities() : {};
-  if (capabilities.zoom) {
-    zoomCapabilities = capabilities.zoom;
-    useSoftZoom = false;
-    const min = Math.max(0.3, zoomCapabilities.min || 1);
-    const max = Math.min(4.0, zoomCapabilities.max || 4);
-    const step = zoomCapabilities.step || 0.1;
-    initZoomSlider(min, max, step);
-    console.log("✅ Zoom hardware didukung");
-  } else {
+    // Cek apakah hardware zoom support
+    if (videoTrack) {
+      const capabilities = videoTrack.getCapabilities ? videoTrack.getCapabilities() : {};
+      if (capabilities.zoom) {
+        zoomCapabilities = capabilities.zoom;
+        useSoftZoom = false;
+        // Gunakan min/max dari hardware jika tersedia, tapi tetap batasi ke 0.25 - 4.0
+        const min = Math.max(ZOOM_MIN, zoomCapabilities.min || ZOOM_MIN);
+        const max = Math.min(ZOOM_MAX, zoomCapabilities.max || ZOOM_MAX);
+        const step = zoomCapabilities.step || ZOOM_STEP;
+        initZoomSlider(min, max, step);
+        console.log("✅ Zoom hardware didukung");
+        return;
+      }
+    }
+
+    // Fallback: soft zoom
     useSoftZoom = true;
-    initZoomSlider(0.3, 4.0, 0.1);
+    initZoomSlider(ZOOM_MIN, ZOOM_MAX, ZOOM_STEP);
     console.log("⚠️ Zoom hardware tidak support, pakai soft zoom (CSS)");
   }
-}
 
-function initZoomSlider(min, max, step) {
-  if (!ui.zoomSlider) return;
+  function initZoomSlider(min, max, step) {
+    if (!ui.zoomSlider) return;
 
-  ui.zoomSlider.min = min;
-  ui.zoomSlider.max = max;
-  ui.zoomSlider.step = step;
-  // Set nilai awal ke 1.0 (atau min jika min > 1)
-  let initial = Math.min(Math.max(1.0, min), max);
-  ui.zoomSlider.value = initial;
-  ui.zoomSlider.disabled = false;
-  updateZoomDisplay(initial);
+    ui.zoomSlider.min = min;
+    ui.zoomSlider.max = max;
+    ui.zoomSlider.step = step;
+    ui.zoomSlider.value = 1.0; // default 100%
+    ui.zoomSlider.disabled = false;
+    updateZoomDisplay(1.0);
 
-  ui.zoomControls.style.display = "flex";
+    ui.zoomControls.style.display = "flex";
 
-  // Hapus event listener lama (jika ada) untuk menghindari duplikasi
-  ui.zoomSlider.oninput = null;
-  ui.zoomSlider.oninput = function() {
-    const val = parseFloat(this.value);
-    applyZoom(val);
-  };
+    ui.zoomSlider.oninput = function() {
+      const val = parseFloat(this.value);
+      applyZoom(val);
+    };
 
-  // Terapkan zoom awal
-  applyZoom(initial);
-}
-
-function applyZoom(value) {
-  const min = parseFloat(ui.zoomSlider.min) || 0.3;
-  const max = parseFloat(ui.zoomSlider.max) || 4.0;
-  const clamped = Math.min(Math.max(value, min), max);
-  currentZoom = clamped;
-
-  // Update slider value agar sinkron (jika berbeda)
-  if (ui.zoomSlider && Math.abs(parseFloat(ui.zoomSlider.value) - clamped) > 0.001) {
-    ui.zoomSlider.value = clamped;
+    // Terapkan zoom awal
+    applyZoom(1.0);
   }
 
-  if (useSoftZoom) {
-    if (videoElement) {
-      // Terapkan scale dengan mempertahankan posisi tengah
-      videoElement.style.transform = `translate(-50%, -50%) scale(${clamped})`;
-      videoElement.style.transformOrigin = 'center center';
-    }
-    updateZoomDisplay(clamped);
-  } else {
-    if (!currentStream) return;
-    const videoTrack = currentStream.getVideoTracks()[0];
-    if (!videoTrack) return;
-    videoTrack.applyConstraints({
-      advanced: [{ zoom: clamped }]
-    })
-    .then(() => {
+  function applyZoom(value) {
+    const min = parseFloat(ui.zoomSlider.min) || ZOOM_MIN;
+    const max = parseFloat(ui.zoomSlider.max) || ZOOM_MAX;
+    const clamped = Math.min(Math.max(value, min), max);
+    currentZoom = clamped;
+
+    if (useSoftZoom) {
+      // Soft zoom pakai CSS transform scale
+      if (videoElement) {
+        const scale = clamped;
+        // Gabungkan dengan translate yang sudah ada di CSS
+        videoElement.style.transform = `translate(-50%, -50%) scale(${scale})`;
+        videoElement.style.transformOrigin = 'center center';
+      }
       updateZoomDisplay(clamped);
-    })
-    .catch(err => {
-      console.error("Gagal apply hardware zoom:", err);
-      // Fallback ke soft zoom
-      useSoftZoom = true;
-      applyZoom(clamped);
-    });
+    } else {
+      // Hardware zoom
+      if (!currentStream) return;
+      const videoTrack = currentStream.getVideoTracks()[0];
+      if (!videoTrack) return;
+      videoTrack.applyConstraints({
+        advanced: [{ zoom: clamped }]
+      })
+      .then(() => {
+        updateZoomDisplay(clamped);
+      })
+      .catch(err => {
+        console.error("Gagal apply hardware zoom:", err);
+        // Fallback ke soft zoom
+        useSoftZoom = true;
+        applyZoom(clamped);
+      });
+    }
   }
-}
 
   function updateZoomDisplay(val) {
     if (ui.zoomValue) {
-      ui.zoomValue.textContent = parseFloat(val).toFixed(1) + "x";
+      const percent = (parseFloat(val) * 100).toFixed(0);
+      ui.zoomValue.textContent = percent + "%";
     }
   }
 

@@ -23,14 +23,18 @@
       width:100% !important; height:100% !important;
       overflow:hidden !important; background:#000;
     }
+    /* Video diatur agar tetap di tengah, dengan scale yang dikontrol JS */
     #qr-reader video {
       position:absolute !important;
       top:50% !important; left:50% !important;
-      transform:translate(-50%,-50%) !important;
-      min-width:100% !important; min-height:100% !important;
-      width:auto !important; height:auto !important;
+      transform:translate(-50%, -50%) !important;
+      min-width:100% !important;
+      min-height:100% !important;
+      width:auto !important;
+      height:auto !important;
       object-fit:cover !important;
       display:block !important;
+      transition: transform 0.15s ease-out;
     }
     /* Sembunyikan dashboard */
     #qr-reader > *:not(video):not(.qr-reader__video) { display:none !important; }
@@ -134,61 +138,61 @@
     }
 
     /* ===== SLIDER ZOOM VERTIKAL DI KIRI ===== */
-/* ===== SLIDER ZOOM VERTIKAL DI KIRI ===== */
-.zoom-controls {
-  position:absolute; left:12px; top:50%; transform:translateY(-50%);
-  z-index:8; display:flex; flex-direction:column;
-  align-items:center; gap:6px;
-  background:rgba(0,0,0,.5);
-  backdrop-filter:blur(4px);
-  border-radius:30px;
-  padding:14px 8px;
-  border:1px solid rgba(255,255,255,.15);
-  pointer-events:auto;
-}
-.zoom-controls .zoom-icon {
-  color:#facc15;
-  font-size:16px;
-}
-.zoom-controls input[type="range"] {
-  /* Slider vertikal */
-  -webkit-appearance: slider-vertical;
-  appearance: slider-vertical;
-  height: 180px;   /* Perpanjang slider */
-  width: 6px;      /* Lebar tipis */
-  background: linear-gradient(to top, #facc15, #f59e0b);
-  outline: none;
-  cursor: pointer;
-  border-radius: 4px;
-}
-.zoom-controls input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #facc15;
-  cursor: pointer;
-  box-shadow: 0 0 8px rgba(250,204,21,.6);
-  border: 2px solid #fff;
-}
-.zoom-controls input[type="range"]::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #facc15;
-  cursor: pointer;
-  border: 2px solid #fff;
-}
-.zoom-controls .zoom-value {
-  color:#fff;
-  font-size:12px;
-  font-weight:700;
-  min-width:36px;
-  text-align:center;
-}
+    .zoom-controls {
+      position:absolute; left:12px; top:50%; transform:translateY(-50%);
+      z-index:8; display:flex; flex-direction:column;
+      align-items:center; gap:6px;
+      background:rgba(0,0,0,.5);
+      backdrop-filter:blur(4px);
+      border-radius:30px;
+      padding:14px 6px;
+      border:1px solid rgba(255,255,255,.15);
+      pointer-events:auto;
+      min-width:44px;
+    }
+    .zoom-controls .zoom-label {
+      color:#fff; font-size:10px; font-weight:600;
+      writing-mode:vertical-lr;
+      letter-spacing:2px;
+    }
+    .zoom-controls input[type="range"] {
+      -webkit-appearance: slider-vertical;
+      appearance: slider-vertical;
+      width:100px; height:4px;
+      writing-mode: bt-lr;
+      background:linear-gradient(to top, #facc15, #f59e0b);
+      outline:none;
+      cursor:pointer;
+    }
+    .zoom-controls input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width:18px; height:18px;
+      border-radius:50%;
+      background:#facc15;
+      cursor:pointer;
+      box-shadow:0 0 8px rgba(250,204,21,.6);
+    }
+    .zoom-controls input[type="range"]::-moz-range-thumb {
+      width:18px; height:18px;
+      border-radius:50%;
+      background:#facc15;
+      cursor:pointer;
+      border:none;
+    }
+    .zoom-controls .zoom-value {
+      color:#fff;
+      font-size:11px;
+      font-weight:700;
+      min-width:36px;
+      text-align:center;
+    }
+    .zoom-controls .zoom-icon {
+      color:#facc15;
+      font-size:14px;
+    }
 
-    /* Tombol ganti kamera */
+    /* Tombol ganti kamera di KANAN */
     .btn-switch-cam {
       position:absolute; right:16px; top:50%; transform:translateY(-50%);
       z-index:8;
@@ -393,8 +397,9 @@
   <!-- Zoom Slider Vertikal di KIRI -->
   <div class="zoom-controls" id="zoom-controls" style="display:none;">
     <span class="zoom-icon">🔍</span>
-    <input type="range" id="zoom-slider" min="1" max="4" step="0.1" value="1" orient="vertical">
-    <span class="zoom-value" id="zoom-value">1.0x</span>
+    <input type="range" id="zoom-slider" min="0.25" max="4.0" step="0.05" value="1.0" orient="vertical">
+    <span class="zoom-value" id="zoom-value">100%</span>
+    <span class="zoom-label">ZOOM</span>
   </div>
 
   <!-- Tombol Ganti Kamera di KANAN -->
@@ -501,7 +506,6 @@
   document.addEventListener("DOMContentLoaded", function () {
     Scanner.start();
 
-    // Event tombol
     document.getElementById("btn-close-sheet").addEventListener("click", Scanner.closeSheet);
     document.getElementById("popup-backdrop").addEventListener("click", Scanner.closeSheet);
     document.getElementById("sheet-handle").addEventListener("click", Scanner.closeSheet);
@@ -517,17 +521,14 @@
       else alert("Arahkan kamera ke QR code gedung terlebih dahulu.");
     });
 
-    // Ganti kamera
     document.getElementById("btn-switch-cam").addEventListener("click", function() {
       Scanner.switchCamera();
     });
 
-    // Tutup debug
     document.getElementById("btn-close-debug").addEventListener("click", function() {
       document.getElementById("debug-modal").classList.remove("show");
     });
 
-    // Upload
     document.querySelector(".app-container").addEventListener("click", function(e) {
       var res = document.getElementById("img-test-result");
       var fab = document.querySelector(".fab-upload");
