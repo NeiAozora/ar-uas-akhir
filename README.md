@@ -50,4 +50,3 @@ www/
   img/              ← Foto gedung & logo
   markers/          ← QR marker untuk dicetak
 ```
-# ar-uas-akhir
