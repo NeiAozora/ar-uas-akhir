@@ -133,57 +133,59 @@
       transition:background .3s, box-shadow .3s;
     }
 
-    /* ===== SLIDER ZOOM VERTIKAL DI KIRI ===== */
-    .zoom-controls {
-      position:absolute; left:12px; top:50%; transform:translateY(-50%);
-      z-index:8; display:flex; flex-direction:column;
-      align-items:center; gap:6px;
-      background:rgba(0,0,0,.5);
-      backdrop-filter:blur(4px);
-      border-radius:30px;
-      padding:14px 6px;
-      border:1px solid rgba(255,255,255,.15);
-      pointer-events:auto;
-    }
-    .zoom-controls label {
-      color:#fff; font-size:12px; font-weight:600;
-    }
-    .zoom-controls input[type="range"] {
-      -webkit-appearance: slider-vertical;
-      appearance: slider-vertical;
-      width:120px; height:4px;
-      writing-mode: bt-lr; /* untuk Firefox */
-      background:linear-gradient(to top, #facc15, #f59e0b);
-      outline:none;
-      cursor:pointer;
-    }
-    .zoom-controls input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width:16px; height:16px;
-      border-radius:50%;
-      background:#facc15;
-      cursor:pointer;
-      box-shadow:0 0 6px rgba(250,204,21,.6);
-    }
-    .zoom-controls input[type="range"]::-moz-range-thumb {
-      width:16px; height:16px;
-      border-radius:50%;
-      background:#facc15;
-      cursor:pointer;
-      border:none;
-    }
-    .zoom-controls .zoom-value {
-      color:#fff;
-      font-size:11px;
-      font-weight:700;
-      min-width:32px;
-      text-align:center;
-    }
-    .zoom-controls .zoom-icon {
-      color:#facc15;
-      font-size:14px;
-    }
+/* ===== SLIDER ZOOM VERTIKAL DI KIRI ===== */
+.zoom-controls {
+  position:absolute; left:12px; top:50%; transform:translateY(-50%);
+  z-index:8; display:flex; flex-direction:column;
+  align-items:center; gap:6px;
+  background:rgba(0,0,0,.5);
+  backdrop-filter:blur(4px);
+  border-radius:30px;
+  padding:14px 8px;
+  border:1px solid rgba(255,255,255,.15);
+  pointer-events:auto;
+}
+.zoom-controls .zoom-icon {
+  color:#facc15;
+  font-size:16px;
+}
+.zoom-controls input[type="range"] {
+  /* Slider vertikal */
+  -webkit-appearance: slider-vertical;
+  appearance: slider-vertical;
+  height: 180px;   /* Perpanjang slider */
+  width: 6px;      /* Lebar tipis */
+  background: linear-gradient(to top, #facc15, #f59e0b);
+  outline: none;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.zoom-controls input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #facc15;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(250,204,21,.6);
+  border: 2px solid #fff;
+}
+.zoom-controls input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #facc15;
+  cursor: pointer;
+  border: 2px solid #fff;
+}
+.zoom-controls .zoom-value {
+  color:#fff;
+  font-size:12px;
+  font-weight:700;
+  min-width:36px;
+  text-align:center;
+}
 
     /* Tombol ganti kamera */
     .btn-switch-cam {
