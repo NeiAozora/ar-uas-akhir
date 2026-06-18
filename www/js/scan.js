@@ -1,10 +1,8 @@
 // =====================================================================
-// UNEJ Heritage AR — SCANNER FINAL (dengan deteksi mobile/PC)
-// - Mobile: hanya kamera "back" / "rear"
-// - PC: filter OBS/virtual
-// - Zoom slider vertikal di kiri (hanya jika support)
-// - Tombol ganti kamera
-// - Popup debug jika error
+// UNEJ Heritage AR — SCANNER (dengan Soft Zoom fallback)
+// - Deteksi mobile: hanya kamera "back"
+// - Zoom hardware jika support, fallback ke CSS scale
+// - Slider selalu tampil (kecuali error)
 // =====================================================================
 
 let Scanner = (function () {
@@ -18,15 +16,16 @@ let Scanner = (function () {
   let currentCameraIndex = 0;
   let currentStream = null;
   let zoomCapabilities = null;
+  let useSoftZoom = false;        // true jika pakai CSS scale
+  let currentZoom = 1.0;
+  let videoElement = null;        // referensi ke video untuk soft zoom
 
   const ui = {};
 
   // ---------- DETEKSI MOBILE ----------
   function isMobile() {
-    // Cek lebar layar atau user agent
     const width = window.innerWidth;
     const ua = navigator.userAgent || navigator.vendor || window.opera;
-    // Jika lebar <= 768px atau user agent mengandung mobile keyword
     const mobileKeywords = /android|iphone|ipad|ipod|blackberry|windows phone/i;
     return (width <= 768) || mobileKeywords.test(ua);
   }
@@ -143,27 +142,24 @@ let Scanner = (function () {
           return;
         }
 
-        // ===== FILTER KAMERA BERDASARKAN PERANGKAT =====
+        // ===== FILTER KAMERA =====
         let filtered = [];
         const mobile = isMobile();
         console.log("📱 Perangkat mobile?", mobile);
 
         if (mobile) {
-          // MOBILE: cari kamera dengan label "back" atau "rear"
           filtered = cameras.filter(cam => {
             const label = cam.label.toLowerCase();
             return label.includes("back") || label.includes("rear");
           });
-          // Jika tidak ada, ambil semua (tapi tetap buang OBS/virtual)
           if (filtered.length === 0) {
-            console.warn("Tidak ada kamera 'back', ambil semua kamera fisik");
+            console.warn("Tidak ada kamera 'back', ambil semua kecuali OBS/virtual");
             filtered = cameras.filter(cam => {
               const label = cam.label.toLowerCase();
               return !label.includes("obs") && !label.includes("virtual");
             });
           }
         } else {
-          // PC: filter OBS / virtual seperti sebelumnya
           const virtualKeywords = ["obs", "virtual", "manycam", "screen", "display", "capture"];
           filtered = cameras.filter(cam => {
             const label = cam.label.toLowerCase();
@@ -177,7 +173,7 @@ let Scanner = (function () {
               return !label.includes("obs") && !label.includes("virtual");
             });
           }
-          if (filtered.length === 0) filtered = cameras; // fallback
+          if (filtered.length === 0) filtered = cameras;
         }
 
         cameraList = filtered;
@@ -208,6 +204,7 @@ let Scanner = (function () {
       currentStream.getTracks().forEach(t => t.stop());
       currentStream = null;
     }
+    videoElement = null;
     if (ui.zoomControls) ui.zoomControls.style.display = "none";
   }
 
@@ -234,16 +231,17 @@ let Scanner = (function () {
         aspectRatio: 1.333,
       },
       onScanSuccess,
-      (err) => {} // abaikan frame error
+      (err) => {}
     )
     .then(() => {
       scannerRunning = true;
       setLabel("Arahkan ke QR gedung…", "idle");
       console.log("✅ Kamera berhasil menyala, ID:", cameraId);
 
-      const video = document.querySelector("#qr-reader video");
-      if (video && video.srcObject) {
-        currentStream = video.srcObject;
+      // Ambil elemen video
+      videoElement = document.querySelector("#qr-reader video");
+      if (videoElement && videoElement.srcObject) {
+        currentStream = videoElement.srcObject;
         setupZoom(currentStream);
       } else {
         try {
@@ -273,53 +271,95 @@ let Scanner = (function () {
     startCamera(cam.id);
   }
 
-  // ---------- ZOOM ----------
+  // ========== ZOOM (dengan fallback soft zoom) ==========
   function setupZoom(stream) {
     if (!ui.zoomControls) return;
     const videoTrack = stream.getVideoTracks()[0];
     if (!videoTrack) {
-      ui.zoomControls.style.display = "none";
+      // Tidak ada track video, fallback ke soft zoom tetap
+      useSoftZoom = true;
+      initZoomSlider(1, 4, 0.1);
       return;
     }
 
     const capabilities = videoTrack.getCapabilities ? videoTrack.getCapabilities() : {};
     if (capabilities.zoom) {
+      // Hardware zoom support
       zoomCapabilities = capabilities.zoom;
+      useSoftZoom = false;
       const min = zoomCapabilities.min || 1;
       const max = zoomCapabilities.max || 4;
       const step = zoomCapabilities.step || 0.1;
-
-      ui.zoomSlider.min = min;
-      ui.zoomSlider.max = max;
-      ui.zoomSlider.step = step;
-      ui.zoomSlider.value = Math.min(Math.max(1, min), max);
-      ui.zoomSlider.disabled = false;
-      updateZoomDisplay(ui.zoomSlider.value);
-
-      ui.zoomControls.style.display = "flex";
-
-      ui.zoomSlider.oninput = function() {
-        const val = parseFloat(this.value);
-        applyZoom(val);
-      };
+      initZoomSlider(min, max, step);
+      console.log("✅ Zoom hardware didukung");
     } else {
-      ui.zoomControls.style.display = "none";
-      console.log("Zoom tidak didukung oleh kamera ini");
+      // Fallback ke soft zoom (CSS scale)
+      useSoftZoom = true;
+      initZoomSlider(1, 4, 0.1);
+      console.log("⚠️ Zoom hardware tidak support, pakai soft zoom (CSS)");
     }
   }
 
+  function initZoomSlider(min, max, step) {
+    if (!ui.zoomSlider) return;
+
+    ui.zoomSlider.min = min;
+    ui.zoomSlider.max = max;
+    ui.zoomSlider.step = step;
+    ui.zoomSlider.value = Math.min(Math.max(1, min), max);
+    ui.zoomSlider.disabled = false;
+    updateZoomDisplay(ui.zoomSlider.value);
+
+    // Tampilkan kontrol zoom
+    ui.zoomControls.style.display = "flex";
+
+    // Event listener
+    ui.zoomSlider.oninput = function() {
+      const val = parseFloat(this.value);
+      applyZoom(val);
+    };
+
+    // Set zoom awal
+    applyZoom(parseFloat(ui.zoomSlider.value));
+  }
+
   function applyZoom(value) {
-    if (!currentStream) return;
-    const videoTrack = currentStream.getVideoTracks()[0];
-    if (!videoTrack) return;
-    const clamped = Math.min(Math.max(value, zoomCapabilities?.min || 1), zoomCapabilities?.max || 4);
-    videoTrack.applyConstraints({
-      advanced: [{ zoom: clamped }]
-    })
-    .then(() => {
+    const clamped = Math.min(Math.max(value, parseFloat(ui.zoomSlider.min) || 1), parseFloat(ui.zoomSlider.max) || 4);
+    currentZoom = clamped;
+
+    if (useSoftZoom) {
+      // Soft zoom menggunakan CSS transform pada video
+      if (videoElement) {
+        // Scale dimulai dari 1, kita gunakan nilai clamped
+        const scale = clamped;
+        videoElement.style.transform = `translate(-50%, -50%) scale(${scale})`;
+        // Karena video sudah di tengah dengan transform: translate(-50%, -50%)
+        // Kita perlu menggabungkan dengan scale
+        // Namun di CSS kita sudah pakai transform: translate(-50%, -50%) di style
+        // Lebih baik kita set langsung di style inline
+        videoElement.style.transform = `translate(-50%, -50%) scale(${scale})`;
+        // Pastikan transform-origin di tengah
+        videoElement.style.transformOrigin = 'center center';
+      }
       updateZoomDisplay(clamped);
-    })
-    .catch(err => console.error("Gagal apply zoom:", err));
+    } else {
+      // Hardware zoom
+      if (!currentStream) return;
+      const videoTrack = currentStream.getVideoTracks()[0];
+      if (!videoTrack) return;
+      videoTrack.applyConstraints({
+        advanced: [{ zoom: clamped }]
+      })
+      .then(() => {
+        updateZoomDisplay(clamped);
+      })
+      .catch(err => {
+        console.error("Gagal apply hardware zoom:", err);
+        // Jika gagal, fallback ke soft zoom
+        useSoftZoom = true;
+        applyZoom(clamped);
+      });
+    }
   }
 
   function updateZoomDisplay(val) {
